@@ -7,9 +7,9 @@ use agit::cli::{Cli, Commands};
 use agit::error::Result;
 
 fn main() {
-    // Initialize tracing
+    // Initialize tracing - output to stderr to not interfere with stdio protocols
     tracing_subscriber::registry()
-        .with(fmt::layer())
+        .with(fmt::layer().with_writer(std::io::stderr))
         .with(EnvFilter::from_default_env())
         .init();
 
