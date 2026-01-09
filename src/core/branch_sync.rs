@@ -125,6 +125,61 @@ impl BranchSync {
     pub fn checkout(&self, branch: &str) -> Result<()> {
         self.head_store.set(branch)
     }
+
+    /// Ensure AGIT is synced with the current Git branch.
+    ///
+    /// This is the main entry point for lazy sync. Call this at the start
+    /// of every AGIT command to ensure the neural graph follows Git.
+    ///
+    /// - If already in sync: Returns `AlreadyInSync`
+    /// - If Git branch exists in AGIT: Switches HEAD, returns `SwitchedToExisting`
+    /// - If Git branch is new: Forks memory from current point, returns `ForkedToNew`
+    pub fn ensure_branch_sync(&self) -> Result<EnsureSyncResult> {
+        let git_branch = self.git.current_branch()?;
+        let agit_branch = self.head_store.get()?;
+
+        match agit_branch {
+            Some(ref ab) if ab == &git_branch => {
+                // Already in sync - no action needed
+                Ok(EnsureSyncResult::AlreadyInSync {
+                    branch: git_branch,
+                })
+            }
+            Some(old_branch) => {
+                // Git switched to a different branch
+                if self.ref_store.get(&git_branch)?.is_some() {
+                    // Branch exists in AGIT refs - just switch HEAD
+                    self.head_store.set(&git_branch)?;
+                    Ok(EnsureSyncResult::SwitchedToExisting {
+                        old_branch,
+                        new_branch: git_branch,
+                    })
+                } else {
+                    // New branch - fork memory from current point
+                    let fork_point = self.ref_store.get(&old_branch)?;
+                    if let Some(ref hash) = fork_point {
+                        // Copy current branch's head to new branch
+                        self.ref_store.update(&git_branch, hash)?;
+                    }
+                    self.head_store.set(&git_branch)?;
+                    Ok(EnsureSyncResult::ForkedToNew {
+                        old_branch,
+                        new_branch: git_branch,
+                        fork_point,
+                    })
+                }
+            }
+            None => {
+                // No AGIT HEAD set - fresh initialization
+                self.head_store.set(&git_branch)?;
+                Ok(EnsureSyncResult::ForkedToNew {
+                    old_branch: String::new(),
+                    new_branch: git_branch,
+                    fork_point: None,
+                })
+            }
+        }
+    }
 }
 
 /// Result of a sync operation.
@@ -136,6 +191,24 @@ pub struct SyncResult {
     pub new_branch: String,
     /// Whether the new branch has any neural commits.
     pub has_commits: bool,
+}
+
+/// Result of an ensure_branch_sync operation.
+#[derive(Debug, Clone)]
+pub enum EnsureSyncResult {
+    /// AGIT and Git are already in sync.
+    AlreadyInSync { branch: String },
+    /// Switched to an existing AGIT branch.
+    SwitchedToExisting {
+        old_branch: String,
+        new_branch: String,
+    },
+    /// Forked memory to a new branch (Git branch didn't exist in AGIT).
+    ForkedToNew {
+        old_branch: String,
+        new_branch: String,
+        fork_point: Option<String>,
+    },
 }
 
 impl SyncResult {

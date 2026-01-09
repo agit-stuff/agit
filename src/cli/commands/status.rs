@@ -1,6 +1,7 @@
 //! Implementation of the `agit status` command.
 
 use crate::cli::args::StatusArgs;
+use crate::core::{ensure_sync, EnsureSyncResult};
 use crate::error::{AgitError, Result};
 use crate::git::GitRepository;
 use crate::storage::{
@@ -15,6 +16,19 @@ pub fn execute(args: StatusArgs) -> Result<()> {
     // Check if initialized
     if !agit_dir.exists() {
         return Err(AgitError::NotInitialized);
+    }
+
+    // Ensure branch sync
+    if let Some(result) = ensure_sync(&cwd, &agit_dir)? {
+        match &result {
+            EnsureSyncResult::ForkedToNew { new_branch, .. } => {
+                println!("Syncing Agit memory to new branch: '{}'", new_branch);
+            }
+            EnsureSyncResult::SwitchedToExisting { new_branch, .. } => {
+                println!("Syncing Agit memory to branch: '{}'", new_branch);
+            }
+            _ => {}
+        }
     }
 
     // Get Git branch

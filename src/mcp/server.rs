@@ -207,6 +207,20 @@ impl McpServer {
                     "required": ["git_hash"]
                 }),
             },
+            ToolDefinition {
+                name: "agit_get_recent_summaries".to_string(),
+                description: "Get recent commit summaries to understand what was done recently. Call this when starting work or when uncertain about recent changes.".to_string(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {
+                        "count": {
+                            "type": "integer",
+                            "description": "Number of recent summaries to return (default: 5)"
+                        }
+                    },
+                    "required": []
+                }),
+            },
         ];
 
         let result = ToolsListResult { tools };
@@ -228,6 +242,9 @@ impl McpServer {
             "agit_read_roadmap" => tools::read_roadmap::execute(&self.agit_dir),
             "agit_get_context" => {
                 tools::get_context::execute(&self.agit_dir, call_params.arguments)
+            },
+            "agit_get_recent_summaries" => {
+                tools::get_recent_summaries::execute(&self.agit_dir, call_params.arguments)
             },
             _ => ToolCallResult::error(&format!("Unknown tool: {}", call_params.name)),
         };

@@ -1,6 +1,7 @@
 //! Implementation of the `agit add` command.
 
 use crate::cli::args::AddArgs;
+use crate::core::{ensure_sync, EnsureSyncResult};
 use crate::error::{AgitError, Result};
 use crate::git::GitRepository;
 use crate::storage::{FileIndexStore, IndexStore};
@@ -12,6 +13,19 @@ pub fn execute(args: AddArgs) -> Result<()> {
 
     if !agit_dir.exists() {
         return Err(AgitError::NotInitialized);
+    }
+
+    // Ensure branch sync
+    if let Some(result) = ensure_sync(&cwd, &agit_dir)? {
+        match &result {
+            EnsureSyncResult::ForkedToNew { new_branch, .. } => {
+                println!("Syncing Agit memory to new branch: '{}'", new_branch);
+            }
+            EnsureSyncResult::SwitchedToExisting { new_branch, .. } => {
+                println!("Syncing Agit memory to branch: '{}'", new_branch);
+            }
+            _ => {}
+        }
     }
 
     let git_repo = GitRepository::open(&cwd)?;

@@ -1,6 +1,7 @@
 //! Implementation of the `agit show` command.
 
 use crate::cli::args::ShowArgs;
+use crate::core::{ensure_sync, EnsureSyncResult};
 use crate::domain::{BlobContent, ObjectType, WrappedBlob, WrappedNeuralCommit};
 use crate::error::{AgitError, Result, StorageError};
 use crate::storage::{
@@ -15,6 +16,19 @@ pub fn execute(args: ShowArgs) -> Result<()> {
     // Check if initialized
     if !agit_dir.exists() {
         return Err(AgitError::NotInitialized);
+    }
+
+    // Ensure branch sync
+    if let Some(result) = ensure_sync(&cwd, &agit_dir)? {
+        match &result {
+            EnsureSyncResult::ForkedToNew { new_branch, .. } => {
+                println!("Syncing Agit memory to new branch: '{}'", new_branch);
+            }
+            EnsureSyncResult::SwitchedToExisting { new_branch, .. } => {
+                println!("Syncing Agit memory to branch: '{}'", new_branch);
+            }
+            _ => {}
+        }
     }
 
     let object_store = FileObjectStore::new(&agit_dir);
