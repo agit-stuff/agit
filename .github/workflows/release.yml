@@ -274,10 +274,19 @@ jobs:
           git commit -m "chore: update package manifests for v${{ needs.create-release.outputs.version }}" || echo "No changes to commit"
           git push
 
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: agit-stuff
+          repositories: homebrew-agit
+
       - name: Trigger Homebrew formula update
         uses: peter-evans/repository-dispatch@v3
         with:
-          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
           repository: agit-stuff/homebrew-agit
           event-type: release
           client-payload: '{"version": "${{ needs.create-release.outputs.version }}"}'
