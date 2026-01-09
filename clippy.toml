@@ -1,2 +1,16 @@
 # Clippy configuration
+# https://doc.rust-lang.org/clippy/
+
+# Complexity thresholds
 cognitive-complexity-threshold = 30
+too-many-arguments-threshold = 8
+type-complexity-threshold = 250
+
+# MSRV for compatibility checks
+msrv = "1.75"
+
+# Allowed names that would otherwise trigger lint warnings
+allowed-idents-below-min-chars = ["i", "j", "k", "n", "x", "y", "id"]
+
+# Documentation requirements
+missing-docs-in-crate-items = true
