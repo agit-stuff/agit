@@ -3,7 +3,9 @@
 use crate::cli::args::ShowArgs;
 use crate::domain::{BlobContent, ObjectType, WrappedBlob, WrappedNeuralCommit};
 use crate::error::{AgitError, Result, StorageError};
-use crate::storage::{FileHeadStore, FileObjectStore, FileRefStore, HeadStore, ObjectStore, RefStore};
+use crate::storage::{
+    FileHeadStore, FileObjectStore, FileRefStore, HeadStore, ObjectStore, RefStore,
+};
 
 /// Execute the `show` command.
 pub fn execute(args: ShowArgs) -> Result<()> {
@@ -27,9 +29,11 @@ pub fn execute(args: ShowArgs) -> Result<()> {
         let branch = head_store.get()?.unwrap_or_else(|| "main".to_string());
 
         let ref_store = FileRefStore::new(&agit_dir);
-        ref_store.get(&branch)?.ok_or(AgitError::Storage(StorageError::NotFound {
-            hash: "HEAD".to_string(),
-        }))?
+        ref_store
+            .get(&branch)?
+            .ok_or(AgitError::Storage(StorageError::NotFound {
+                hash: "HEAD".to_string(),
+            }))?
     };
 
     // Load the commit
@@ -41,7 +45,10 @@ pub fn execute(args: ShowArgs) -> Result<()> {
     println!("Neural Commit: {}", commit_hash);
     println!("Git Commit:    {}", commit.git_hash);
     println!("Author:        {}", commit.author);
-    println!("Date:          {}", commit.created_at.format("%Y-%m-%d %H:%M:%S UTC"));
+    println!(
+        "Date:          {}",
+        commit.created_at.format("%Y-%m-%d %H:%M:%S UTC")
+    );
     println!();
     println!("Summary:");
     println!("  {}", commit.summary);

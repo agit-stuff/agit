@@ -22,7 +22,9 @@ pub fn execute(args: CommitArgs) -> Result<()> {
 
     if entries.is_empty() && !args.amend {
         println!("No thoughts recorded in staging area.");
-        println!("Use 'agit record' to add thoughts, or the MCP server will log them automatically.");
+        println!(
+            "Use 'agit record' to add thoughts, or the MCP server will log them automatically."
+        );
         return Ok(());
     }
 
@@ -33,7 +35,7 @@ pub fn execute(args: CommitArgs) -> Result<()> {
             return Err(AgitError::InvalidArgument(
                 "Commit message required. Use -m or --message".to_string(),
             ));
-        }
+        },
     };
 
     // Create the pipeline

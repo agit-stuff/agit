@@ -107,7 +107,11 @@ impl IndexStore for FileIndexStore {
         let file = File::open(&self.index_path)?;
         let reader = BufReader::new(file);
 
-        Ok(reader.lines().map_while(Result::ok).filter(|l| !l.trim().is_empty()).count())
+        Ok(reader
+            .lines()
+            .map_while(|l| l.ok())
+            .filter(|l| !l.trim().is_empty())
+            .count())
     }
 }
 

@@ -28,8 +28,7 @@ pub fn execute(args: ServerArgs) -> Result<()> {
         use tracing_subscriber::EnvFilter;
         tracing_subscriber::fmt()
             .with_env_filter(
-                EnvFilter::try_from_default_env()
-                    .unwrap_or_else(|_| EnvFilter::new("agit=debug")),
+                EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("agit=debug")),
             )
             .with_writer(std::io::stderr)
             .init();

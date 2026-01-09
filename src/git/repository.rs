@@ -92,8 +92,8 @@ impl GitRepository {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
     use std::fs;
+    use tempfile::TempDir;
 
     fn create_test_repo() -> (TempDir, GitRepository) {
         let temp = TempDir::new().unwrap();
@@ -116,14 +116,8 @@ mod tests {
         let tree_id = index.write_tree().unwrap();
         let tree = repo.find_tree(tree_id).unwrap();
 
-        repo.commit(
-            Some("HEAD"),
-            &sig,
-            &sig,
-            "Initial commit",
-            &tree,
-            &[],
-        ).unwrap();
+        repo.commit(Some("HEAD"), &sig, &sig, "Initial commit", &tree, &[])
+            .unwrap();
 
         let git_repo = GitRepository::open(temp.path()).unwrap();
         (temp, git_repo)

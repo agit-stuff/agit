@@ -95,7 +95,10 @@ impl CommitPipeline {
         let git_hash = self.git.head_commit_hash()?;
 
         // 7. Create neural commit
-        let author = self.git.config_user_email()?.unwrap_or_else(|| "unknown".to_string());
+        let author = self
+            .git
+            .config_user_email()?
+            .unwrap_or_else(|| "unknown".to_string());
         let neural_commit = NeuralCommit::new(
             &git_hash,
             parent_hash,
@@ -126,7 +129,8 @@ impl CommitPipeline {
     fn get_or_create_roadmap(&self) -> Result<String> {
         // For now, just create an empty roadmap
         // In the future, this should read from .agit/roadmap or similar
-        let roadmap = BlobContent::roadmap("No roadmap set. Use 'agit roadmap' to set project goals.");
+        let roadmap =
+            BlobContent::roadmap("No roadmap set. Use 'agit roadmap' to set project goals.");
         let wrapped = WrappedBlob::wrap(roadmap);
         let json = serde_json::to_vec(&wrapped)?;
         self.objects.save(&json)

@@ -50,7 +50,7 @@ impl McpServer {
                 Err(e) => {
                     error!("Failed to read from stdin: {}", e);
                     break;
-                }
+                },
             };
 
             if line.is_empty() {
@@ -93,7 +93,7 @@ impl McpServer {
                     PARSE_ERROR,
                     &format!("Parse error: {}", e),
                 ));
-            }
+            },
         };
 
         // Handle the method
@@ -126,19 +126,27 @@ impl McpServer {
             // Unknown method
             _ => {
                 error!("Unknown method: {}", request.method);
-                Err((METHOD_NOT_FOUND, format!("Method not found: {}", request.method)))
-            }
+                Err((
+                    METHOD_NOT_FOUND,
+                    format!("Method not found: {}", request.method),
+                ))
+            },
         }
     }
 
     /// Handle the initialize request.
-    fn handle_initialize(&self, _params: Option<&Value>) -> std::result::Result<Value, (i32, String)> {
+    fn handle_initialize(
+        &self,
+        _params: Option<&Value>,
+    ) -> std::result::Result<Value, (i32, String)> {
         info!("Client initializing");
 
         let result = InitializeResult {
             protocol_version: "2024-11-05".to_string(),
             capabilities: ServerCapabilities {
-                tools: ToolsCapability { list_changed: false },
+                tools: ToolsCapability {
+                    list_changed: false,
+                },
             },
             server_info: ServerInfo {
                 name: "agit".to_string(),
@@ -206,7 +214,10 @@ impl McpServer {
     }
 
     /// Handle the tools/call request.
-    fn handle_tools_call(&self, params: Option<&Value>) -> std::result::Result<Value, (i32, String)> {
+    fn handle_tools_call(
+        &self,
+        params: Option<&Value>,
+    ) -> std::result::Result<Value, (i32, String)> {
         let params = params.ok_or((INVALID_PARAMS, "Missing params".to_string()))?;
 
         let call_params: ToolCallParams = serde_json::from_value(params.clone())
@@ -215,7 +226,9 @@ impl McpServer {
         let result = match call_params.name.as_str() {
             "agit_log_step" => tools::log_step::execute(&self.agit_dir, call_params.arguments),
             "agit_read_roadmap" => tools::read_roadmap::execute(&self.agit_dir),
-            "agit_get_context" => tools::get_context::execute(&self.agit_dir, call_params.arguments),
+            "agit_get_context" => {
+                tools::get_context::execute(&self.agit_dir, call_params.arguments)
+            },
             _ => ToolCallResult::error(&format!("Unknown tool: {}", call_params.name)),
         };
 

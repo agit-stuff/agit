@@ -9,7 +9,9 @@ use tracing::debug;
 
 use crate::domain::{ObjectType, WrappedBlob, WrappedNeuralCommit};
 use crate::mcp::protocol::ToolCallResult;
-use crate::storage::{FileHeadStore, FileObjectStore, FileRefStore, HeadStore, ObjectStore, RefStore};
+use crate::storage::{
+    FileHeadStore, FileObjectStore, FileRefStore, HeadStore, ObjectStore, RefStore,
+};
 
 /// Execute the agit_read_roadmap tool.
 pub fn execute(agit_dir: &Path) -> ToolCallResult {
@@ -30,7 +32,7 @@ pub fn execute(agit_dir: &Path) -> ToolCallResult {
                  To set a roadmap, create an 'agit commit' with context that includes\n\
                  your project goals, or add a ROADMAP.md file to your project.",
             );
-        }
+        },
     };
 
     ToolCallResult::text(&roadmap)
@@ -40,26 +42,30 @@ pub fn execute(agit_dir: &Path) -> ToolCallResult {
 fn read_latest_roadmap(agit_dir: &Path) -> Result<String, String> {
     // Get current branch
     let head_store = FileHeadStore::new(agit_dir);
-    let branch = head_store.get()
+    let branch = head_store
+        .get()
         .map_err(|e| format!("Failed to read HEAD: {}", e))?
         .unwrap_or_else(|| "main".to_string());
 
     // Get the latest commit hash
     let ref_store = FileRefStore::new(agit_dir);
-    let commit_hash = ref_store.get(&branch)
+    let commit_hash = ref_store
+        .get(&branch)
         .map_err(|e| format!("Failed to read ref: {}", e))?
         .ok_or_else(|| "No commits yet".to_string())?;
 
     // Load the commit
     let object_store = FileObjectStore::new(agit_dir);
-    let commit_data = object_store.load(&commit_hash)
+    let commit_data = object_store
+        .load(&commit_hash)
         .map_err(|e| format!("Failed to load commit: {}", e))?;
 
     let wrapped: WrappedNeuralCommit = serde_json::from_slice(&commit_data)
         .map_err(|e| format!("Failed to parse commit: {}", e))?;
 
     // Load the roadmap blob
-    let roadmap_data = object_store.load(&wrapped.data.roadmap_hash)
+    let roadmap_data = object_store
+        .load(&wrapped.data.roadmap_hash)
         .map_err(|e| format!("Failed to load roadmap: {}", e))?;
 
     let roadmap_blob: WrappedBlob = serde_json::from_slice(&roadmap_data)

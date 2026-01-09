@@ -159,9 +159,6 @@ mod tests {
             line: 42,
             reason: "invalid JSON".to_string(),
         };
-        assert_eq!(
-            err.to_string(),
-            "Malformed entry at line 42: invalid JSON"
-        );
+        assert_eq!(err.to_string(), "Malformed entry at line 42: invalid JSON");
     }
 }

@@ -3,7 +3,9 @@
 use crate::cli::args::StatusArgs;
 use crate::error::{AgitError, Result};
 use crate::git::GitRepository;
-use crate::storage::{FileHeadStore, FileIndexStore, FileRefStore, HeadStore, IndexStore, RefStore};
+use crate::storage::{
+    FileHeadStore, FileIndexStore, FileRefStore, HeadStore, IndexStore, RefStore,
+};
 
 /// Execute the `status` command.
 pub fn execute(args: StatusArgs) -> Result<()> {

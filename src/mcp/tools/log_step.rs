@@ -19,7 +19,7 @@ pub fn execute(agit_dir: &Path, arguments: Option<Value>) -> ToolCallResult {
         Some(v) => v,
         None => {
             return ToolCallResult::error("Missing arguments for agit_log_step");
-        }
+        },
     };
 
     let params: LogStepParams = match serde_json::from_value(args) {
@@ -27,7 +27,7 @@ pub fn execute(agit_dir: &Path, arguments: Option<Value>) -> ToolCallResult {
         Err(e) => {
             error!("Invalid params for agit_log_step: {}", e);
             return ToolCallResult::error(&format!("Invalid parameters: {}", e));
-        }
+        },
     };
 
     // Validate and convert role
@@ -39,7 +39,7 @@ pub fn execute(agit_dir: &Path, arguments: Option<Value>) -> ToolCallResult {
                 "Invalid role '{}'. Must be 'user' or 'ai'",
                 params.role
             ));
-        }
+        },
     };
 
     // Validate and convert category
@@ -52,7 +52,7 @@ pub fn execute(agit_dir: &Path, arguments: Option<Value>) -> ToolCallResult {
                 "Invalid category '{}'. Must be 'intent', 'reasoning', or 'error'",
                 params.category
             ));
-        }
+        },
     };
 
     // Check if agit is initialized

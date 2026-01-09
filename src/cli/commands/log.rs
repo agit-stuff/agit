@@ -3,7 +3,9 @@
 use crate::cli::args::LogArgs;
 use crate::domain::{NeuralCommit, ObjectType, WrappedNeuralCommit};
 use crate::error::{AgitError, Result};
-use crate::storage::{FileHeadStore, FileObjectStore, FileRefStore, HeadStore, ObjectStore, RefStore};
+use crate::storage::{
+    FileHeadStore, FileObjectStore, FileRefStore, HeadStore, ObjectStore, RefStore,
+};
 
 /// Execute the `log` command.
 pub fn execute(args: LogArgs) -> Result<()> {
@@ -71,7 +73,10 @@ fn print_oneline(commit: &NeuralCommit) {
 fn print_full(commit: &NeuralCommit) {
     println!("commit {} (git: {})", commit.short_hash(), commit.git_hash);
     println!("Author: {}", commit.author);
-    println!("Date:   {}", commit.created_at.format("%Y-%m-%d %H:%M:%S UTC"));
+    println!(
+        "Date:   {}",
+        commit.created_at.format("%Y-%m-%d %H:%M:%S UTC")
+    );
     println!();
     println!("    {}", commit.summary);
     println!();

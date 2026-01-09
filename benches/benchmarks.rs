@@ -12,9 +12,9 @@ use std::fs;
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use tempfile::TempDir;
 
+use agit::core::SynthesizeSummary;
 use agit::domain::{BlobContent, IndexEntry, WrappedBlob};
 use agit::storage::{FileIndexStore, FileObjectStore, IndexStore, ObjectStore};
-use agit::core::SynthesizeSummary;
 
 /// Setup a temporary AGIT directory for benchmarks.
 fn setup_agit_dir() -> (TempDir, std::path::PathBuf) {
@@ -40,9 +40,7 @@ fn bench_object_store_write(c: &mut Criterion) {
             let (_temp, agit_dir) = setup_agit_dir();
             let store = FileObjectStore::new(&agit_dir);
 
-            b.iter(|| {
-                store.save(black_box(&json)).unwrap()
-            });
+            b.iter(|| store.save(black_box(&json)).unwrap());
         });
     }
 
@@ -65,9 +63,7 @@ fn bench_object_store_read(c: &mut Criterion) {
             let store = FileObjectStore::new(&agit_dir);
             let hash = store.save(&json).unwrap();
 
-            b.iter(|| {
-                store.load(black_box(&hash)).unwrap()
-            });
+            b.iter(|| store.load(black_box(&hash)).unwrap());
         });
     }
 
@@ -81,9 +77,7 @@ fn bench_index_append(c: &mut Criterion) {
         let store = FileIndexStore::new(&agit_dir);
         let entry = IndexEntry::user_intent("Fix the authentication bug in the login flow");
 
-        b.iter(|| {
-            store.append(black_box(&entry)).unwrap()
-        });
+        b.iter(|| store.append(black_box(&entry)).unwrap());
     });
 }
 
@@ -102,9 +96,7 @@ fn bench_index_read(c: &mut Criterion) {
                 store.append(&entry).unwrap();
             }
 
-            b.iter(|| {
-                store.read_all().unwrap()
-            });
+            b.iter(|| store.read_all().unwrap());
         });
     }
 
@@ -127,9 +119,7 @@ fn bench_synthesize_summary(c: &mut Criterion) {
                 }
             }
 
-            b.iter(|| {
-                SynthesizeSummary::synthesize(black_box(&entries))
-            });
+            b.iter(|| SynthesizeSummary::synthesize(black_box(&entries)));
         });
     }
 
@@ -144,12 +134,13 @@ fn bench_format_trace(c: &mut Criterion) {
         group.bench_with_input(BenchmarkId::from_parameter(count), count, |b, &count| {
             let mut entries = Vec::with_capacity(count);
             for i in 0..count {
-                entries.push(IndexEntry::user_intent(&format!("Entry {} with some content", i)));
+                entries.push(IndexEntry::user_intent(&format!(
+                    "Entry {} with some content",
+                    i
+                )));
             }
 
-            b.iter(|| {
-                SynthesizeSummary::format_trace(black_box(&entries))
-            });
+            b.iter(|| SynthesizeSummary::format_trace(black_box(&entries)));
         });
     }
 
@@ -158,7 +149,7 @@ fn bench_format_trace(c: &mut Criterion) {
 
 /// Benchmark SHA-256 hashing (used for content addressing).
 fn bench_hash_computation(c: &mut Criterion) {
-    use sha2::{Sha256, Digest};
+    use sha2::{Digest, Sha256};
 
     let mut group = c.benchmark_group("hash_computation");
 

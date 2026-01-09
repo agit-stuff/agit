@@ -24,10 +24,7 @@ fn send_request(stdin: &mut impl Write, stdout: &mut impl BufRead, request: Valu
     let bytes_read = stdout.read_line(&mut response_line).unwrap();
 
     if bytes_read == 0 || response_line.trim().is_empty() {
-        panic!(
-            "Empty response from server for request: {}",
-            request_str
-        );
+        panic!("Empty response from server for request: {}", request_str);
     }
 
     serde_json::from_str(&response_line).unwrap_or_else(|e| {
@@ -132,10 +129,7 @@ fn test_mcp_tools_list() {
 
     // Verify tools
     let tools = response["result"]["tools"].as_array().unwrap();
-    let tool_names: Vec<&str> = tools
-        .iter()
-        .map(|t| t["name"].as_str().unwrap())
-        .collect();
+    let tool_names: Vec<&str> = tools.iter().map(|t| t["name"].as_str().unwrap()).collect();
 
     assert!(tool_names.contains(&"agit_log_step"));
     assert!(tool_names.contains(&"agit_read_roadmap"));

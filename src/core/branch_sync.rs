@@ -205,10 +205,7 @@ mod tests {
         let status = sync.status().unwrap();
 
         assert!(!status.is_in_sync());
-        if let SyncStatus::OutOfSync {
-            agit_branch, ..
-        } = status
-        {
+        if let SyncStatus::OutOfSync { agit_branch, .. } = status {
             assert_eq!(agit_branch, "feature-x");
         } else {
             panic!("Expected OutOfSync status");

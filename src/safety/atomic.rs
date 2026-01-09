@@ -50,7 +50,9 @@ pub fn atomic_write(path: &Path, content: &[u8]) -> Result<()> {
     temp_file.as_file().sync_all()?;
 
     // Atomically rename to target path
-    temp_file.persist(path).map_err(|e| AgitError::Io(e.error))?;
+    temp_file
+        .persist(path)
+        .map_err(|e| AgitError::Io(e.error))?;
 
     Ok(())
 }
