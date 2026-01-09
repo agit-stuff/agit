@@ -239,6 +239,24 @@ impl McpServer {
                     "required": ["query"]
                 }),
             },
+            ToolDefinition {
+                name: "agit_get_file_history".to_string(),
+                description: "Get the history of changes to a specific file. Returns summaries of neural commits that touched this file. Use this BEFORE modifying any file to understand past changes.".to_string(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {
+                        "filepath": {
+                            "type": "string",
+                            "description": "The file path to get history for (e.g., 'src/auth.rs')"
+                        },
+                        "limit": {
+                            "type": "integer",
+                            "description": "Maximum number of commits to return (default: 3)"
+                        }
+                    },
+                    "required": ["filepath"]
+                }),
+            },
         ];
 
         let result = ToolsListResult { tools };
@@ -271,6 +289,11 @@ impl McpServer {
             "agit_get_relevant_context" => {
                 tools::relevant_context::execute(&self.agit_dir, call_params.arguments)
             },
+            "agit_get_file_history" => tools::get_file_history::execute(
+                &self.project_root,
+                &self.agit_dir,
+                call_params.arguments,
+            ),
             _ => ToolCallResult::error(&format!("Unknown tool: {}", call_params.name)),
         };
 
