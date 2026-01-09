@@ -72,14 +72,16 @@ jobs:
     permissions:
       contents: write
     strategy:
+      fail-fast: false
       matrix:
         include:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
             name: agit-linux-x86_64
-          - target: x86_64-unknown-linux-musl
-            os: ubuntu-latest
-            name: agit-linux-x86_64-musl
+          # musl disabled until cross-compilation is fixed
+          # - target: x86_64-unknown-linux-musl
+          #   os: ubuntu-latest
+          #   name: agit-linux-x86_64-musl
           - target: aarch64-unknown-linux-gnu
             os: ubuntu-latest
             name: agit-linux-aarch64
@@ -192,9 +194,10 @@ jobs:
           - os: ubuntu-latest
             name: agit-linux-x86_64
             ext: tar.gz
-          - os: ubuntu-latest
-            name: agit-linux-x86_64-musl
-            ext: tar.gz
+          # musl disabled until cross-compilation is fixed
+          # - os: ubuntu-latest
+          #   name: agit-linux-x86_64-musl
+          #   ext: tar.gz
           - os: ubuntu-latest
             name: agit-linux-aarch64
             ext: tar.gz
