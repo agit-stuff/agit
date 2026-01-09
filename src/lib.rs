@@ -35,6 +35,7 @@ pub mod error;
 pub mod git;
 pub mod mcp;
 pub mod safety;
+pub mod search;
 pub mod storage;
 pub mod templates;
 

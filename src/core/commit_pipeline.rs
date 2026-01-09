@@ -175,6 +175,11 @@ impl CommitPipeline {
         // 10. Update branch ref
         self.refs.update(&branch, &neural_hash)?;
 
+        // 10.5. Index entries for full-text search (non-fatal)
+        if let Err(e) = crate::search::indexer::index_entries(&self.agit_dir, &entries) {
+            tracing::warn!("Failed to index entries for search: {}", e);
+        }
+
         // 11. Clear index
         if self.index.has_staged()? {
             self.index.clear_staged()?;
@@ -387,6 +392,11 @@ impl GitNativeCommitPipeline {
 
         // 10. Update branch ref
         self.refs.update(&branch, &neural_hash)?;
+
+        // 10.5. Index entries for full-text search (non-fatal)
+        if let Err(e) = crate::search::indexer::index_entries(&self.agit_dir, &entries) {
+            tracing::warn!("Failed to index entries for search: {}", e);
+        }
 
         // 11. Clear index
         if self.index.has_staged()? {

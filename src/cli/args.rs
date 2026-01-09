@@ -51,6 +51,9 @@ pub enum Commands {
 
     /// Start the MCP server
     Server(ServerArgs),
+
+    /// Search-related commands (rebuild index, query)
+    Search(SearchArgs),
 }
 
 /// Arguments for the `init` command
@@ -193,4 +196,31 @@ pub struct MigrateArgs {
     /// Force migration even if already on V2
     #[arg(short, long)]
     pub force: bool,
+}
+
+/// Arguments for the `search` command
+#[derive(Parser, Debug)]
+pub struct SearchArgs {
+    /// Search subcommand
+    #[command(subcommand)]
+    pub command: SearchCommands,
+}
+
+/// Search subcommands
+#[derive(Subcommand, Debug)]
+pub enum SearchCommands {
+    /// Rebuild the search index from existing neural commits
+    Rebuild,
+    /// Query the search index
+    Query(SearchQueryArgs),
+}
+
+/// Arguments for search query
+#[derive(Parser, Debug)]
+pub struct SearchQueryArgs {
+    /// The search query
+    pub query: String,
+    /// Maximum number of results
+    #[arg(short, long, default_value = "5")]
+    pub limit: usize,
 }

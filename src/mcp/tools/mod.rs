@@ -7,3 +7,4 @@ pub mod get_context;
 pub mod get_recent_summaries;
 pub mod log_step;
 pub mod read_roadmap;
+pub mod relevant_context;

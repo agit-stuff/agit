@@ -221,6 +221,24 @@ impl McpServer {
                     "required": []
                 }),
             },
+            ToolDefinition {
+                name: "agit_get_relevant_context".to_string(),
+                description: "Search past reasoning logs for relevant context. Use this to find WHY past decisions were made based on keywords.".to_string(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "Search query to find relevant past reasoning"
+                        },
+                        "limit": {
+                            "type": "integer",
+                            "description": "Maximum number of results (default: 5)"
+                        }
+                    },
+                    "required": ["query"]
+                }),
+            },
         ];
 
         let result = ToolsListResult { tools };
@@ -250,6 +268,9 @@ impl McpServer {
                 &self.agit_dir,
                 call_params.arguments,
             ),
+            "agit_get_relevant_context" => {
+                tools::relevant_context::execute(&self.agit_dir, call_params.arguments)
+            },
             _ => ToolCallResult::error(&format!("Unknown tool: {}", call_params.name)),
         };
 
