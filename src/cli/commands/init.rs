@@ -11,26 +11,6 @@ use crate::templates::TEMPLATE_FILES;
 /// The AGIT directory name.
 const AGIT_DIR: &str = ".agit";
 
-/// Entries to add to .gitignore for AGIT (V1 file-based storage).
-const GITIGNORE_ENTRIES_V1: &str = r#"
-# AGIT - AI-Native Git Wrapper
-# Local state (not shared)
-.agit/config.json
-.agit/HEAD
-.agit/index
-.agit/LOCK
-.agit/tmp/
-
-# Shared data (tracked)
-!/.agit/objects/
-!/.agit/refs/
-
-# MCP configs (shared with team)
-!.mcp.json
-!.cursor/mcp.json
-!.vscode/mcp.json
-"#;
-
 /// Entries to add to .gitignore for AGIT (V2 Git-native storage).
 /// In V2, all .agit/ content is local since shared data lives in Git refs.
 const GITIGNORE_ENTRIES_V2: &str = r#"

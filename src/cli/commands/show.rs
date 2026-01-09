@@ -28,11 +28,11 @@ pub fn execute(args: ShowArgs) -> Result<()> {
         match &result {
             EnsureSyncResult::ForkedToNew { new_branch, .. } => {
                 println!("Syncing Agit memory to new branch: '{}'", new_branch);
-            }
+            },
             EnsureSyncResult::SwitchedToExisting { new_branch, .. } => {
                 println!("Syncing Agit memory to branch: '{}'", new_branch);
-            }
-            _ => {}
+            },
+            _ => {},
         }
     }
 

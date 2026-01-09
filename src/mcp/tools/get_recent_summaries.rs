@@ -24,11 +24,9 @@ const DEFAULT_COUNT: usize = 5;
 pub fn execute(project_root: &Path, agit_dir: &Path, arguments: Option<Value>) -> ToolCallResult {
     // Parse arguments (count is optional)
     let count = match arguments {
-        Some(v) => {
-            match serde_json::from_value::<GetRecentSummariesParams>(v) {
-                Ok(p) => p.count.unwrap_or(DEFAULT_COUNT),
-                Err(_) => DEFAULT_COUNT,
-            }
+        Some(v) => match serde_json::from_value::<GetRecentSummariesParams>(v) {
+            Ok(p) => p.count.unwrap_or(DEFAULT_COUNT),
+            Err(_) => DEFAULT_COUNT,
         },
         None => DEFAULT_COUNT,
     };

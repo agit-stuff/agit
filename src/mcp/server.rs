@@ -240,12 +240,16 @@ impl McpServer {
         let result = match call_params.name.as_str() {
             "agit_log_step" => tools::log_step::execute(&self.agit_dir, call_params.arguments),
             "agit_read_roadmap" => tools::read_roadmap::execute(&self.agit_dir),
-            "agit_get_context" => {
-                tools::get_context::execute(&self.project_root, &self.agit_dir, call_params.arguments)
-            },
-            "agit_get_recent_summaries" => {
-                tools::get_recent_summaries::execute(&self.project_root, &self.agit_dir, call_params.arguments)
-            },
+            "agit_get_context" => tools::get_context::execute(
+                &self.project_root,
+                &self.agit_dir,
+                call_params.arguments,
+            ),
+            "agit_get_recent_summaries" => tools::get_recent_summaries::execute(
+                &self.project_root,
+                &self.agit_dir,
+                call_params.arguments,
+            ),
             _ => ToolCallResult::error(&format!("Unknown tool: {}", call_params.name)),
         };
 

@@ -89,13 +89,13 @@ pub fn execute(args: PushArgs) -> Result<()> {
         Ok(()) => {
             println!("\nPushed {} ref(s) to '{}'", refs.len(), args.remote);
             Ok(())
-        }
+        },
         Err(e) => {
             if e.message().contains("non-fast-forward") && !args.force {
                 println!("\nFailed to push: remote refs have diverged.");
                 println!("Use 'agit push --force' to overwrite, or 'agit pull' first.");
             }
             Err(AgitError::Git(e))
-        }
+        },
     }
 }

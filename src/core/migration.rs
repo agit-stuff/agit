@@ -10,7 +10,7 @@ use std::path::Path;
 use git2::{Oid, Repository};
 
 use crate::error::Result;
-use crate::storage::{FileObjectStore, FileRefStore, RefStore};
+use crate::storage::{FileRefStore, RefStore};
 
 /// Storage version for migration tracking.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -106,11 +106,7 @@ pub fn migrate_v1_to_v2(agit_dir: &Path, repo: &Repository) -> Result<MigrationR
 
                 // Build old hash from path components
                 let suffix = obj_entry.file_name();
-                let old_hash = format!(
-                    "{}{}",
-                    prefix.to_string_lossy(),
-                    suffix.to_string_lossy()
-                );
+                let old_hash = format!("{}{}", prefix.to_string_lossy(), suffix.to_string_lossy());
 
                 hash_map.insert(old_hash, oid.to_string());
                 objects_migrated += 1;
@@ -126,24 +122,14 @@ pub fn migrate_v1_to_v2(agit_dir: &Path, repo: &Repository) -> Result<MigrationR
             if let Some(new_oid_str) = hash_map.get(&old_hash) {
                 let ref_name = format!("refs/agit/heads/{}", branch);
                 let oid = Oid::from_str(new_oid_str)?;
-                repo.reference(
-                    &ref_name,
-                    oid,
-                    true,
-                    &format!("agit migration: {}", branch),
-                )?;
+                repo.reference(&ref_name, oid, true, &format!("agit migration: {}", branch))?;
                 refs_migrated += 1;
             } else {
                 // Old hash not found in objects - might be a direct OID
                 // Try to parse as OID directly
                 if let Ok(oid) = Oid::from_str(&old_hash) {
                     let ref_name = format!("refs/agit/heads/{}", branch);
-                    repo.reference(
-                        &ref_name,
-                        oid,
-                        true,
-                        &format!("agit migration: {}", branch),
-                    )?;
+                    repo.reference(&ref_name, oid, true, &format!("agit migration: {}", branch))?;
                     refs_migrated += 1;
                 }
             }
@@ -177,6 +163,7 @@ pub fn cleanup_v1_storage(agit_dir: &Path) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::storage::FileObjectStore;
     use tempfile::TempDir;
 
     fn setup() -> (TempDir, Repository) {
@@ -201,11 +188,7 @@ mod tests {
         let (temp, repo) = setup();
         let agit_dir = temp.path().join(".agit");
         fs::create_dir_all(agit_dir.join("objects").join("ab")).unwrap();
-        fs::write(
-            agit_dir.join("objects").join("ab").join("cdef"),
-            "content",
-        )
-        .unwrap();
+        fs::write(agit_dir.join("objects").join("ab").join("cdef"), "content").unwrap();
 
         let version = detect_version(&agit_dir, &repo);
         assert_eq!(version, StorageVersion::V1FileSystem);
@@ -240,7 +223,11 @@ mod tests {
         let hash = FileObjectStore::hash_content(test_content);
         let (prefix, rest) = hash.split_at(2);
         fs::create_dir_all(agit_dir.join("objects").join(prefix)).unwrap();
-        fs::write(agit_dir.join("objects").join(prefix).join(rest), test_content).unwrap();
+        fs::write(
+            agit_dir.join("objects").join(prefix).join(rest),
+            test_content,
+        )
+        .unwrap();
 
         // Create V1 ref pointing to the object
         let refs_dir = agit_dir.join("refs").join("heads");

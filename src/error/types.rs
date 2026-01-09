@@ -67,7 +67,9 @@ pub enum AgitError {
     Cancelled,
 
     /// Nothing to commit (no code or memory changes).
-    #[error("Nothing to commit. Record thoughts with 'agit record' or stage code with 'agit add'.")]
+    #[error(
+        "Nothing to commit. Record thoughts with 'agit record' or stage code with 'agit add'."
+    )]
     NothingToCommit,
 }
 

@@ -28,11 +28,11 @@ pub fn execute(args: CommitArgs) -> Result<()> {
         match &result {
             EnsureSyncResult::ForkedToNew { new_branch, .. } => {
                 println!("Syncing Agit memory to new branch: '{}'", new_branch);
-            }
+            },
             EnsureSyncResult::SwitchedToExisting { new_branch, .. } => {
                 println!("Syncing Agit memory to branch: '{}'", new_branch);
-            }
-            _ => {}
+            },
+            _ => {},
         }
     }
 
@@ -58,9 +58,6 @@ pub fn execute(args: CommitArgs) -> Result<()> {
         },
     };
 
-    // Create the appropriate pipeline based on storage version
-    let git_repo = GitRepository::open(&cwd)?;
-
     // Detect storage version
     let version = {
         let repo = Repository::discover(&cwd)?;
@@ -80,11 +77,11 @@ pub fn execute(args: CommitArgs) -> Result<()> {
         let head_store = FileHeadStore::new(&agit_dir);
         let pipeline = CommitPipeline::new(
             agit_dir.clone(),
-            git_repo.clone(),
+            GitRepository::open(&cwd)?,
             object_store,
             ref_store,
             head_store,
-            index_store.clone(),
+            FileIndexStore::new(&agit_dir),
         );
         pipeline.detect_change_state()?
     };
@@ -111,25 +108,25 @@ pub fn execute(args: CommitArgs) -> Result<()> {
                 // Proceed with memory-only commit
                 println!();
                 println!("[Agit] Creating plan commit...");
-            }
+            },
             "2" => {
                 // Discard thoughts
                 index_store.clear()?;
                 println!();
                 println!("Thoughts discarded. Index cleared.");
                 return Ok(());
-            }
+            },
             "3" | "" => {
                 // Cancel
                 println!();
                 println!("Commit cancelled.");
                 return Ok(());
-            }
+            },
             _ => {
                 println!();
                 println!("Invalid choice. Commit cancelled.");
                 return Ok(());
-            }
+            },
         }
     }
 

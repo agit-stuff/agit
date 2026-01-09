@@ -46,7 +46,7 @@ pub fn execute(args: MigrateArgs) -> Result<()> {
 
             println!("\nStorage is now using V2 Git-native format.");
             println!("Objects are stored in Git ODB, refs are in refs/agit/*");
-        }
+        },
 
         StorageVersion::V2GitNative => {
             if args.force {
@@ -56,7 +56,7 @@ pub fn execute(args: MigrateArgs) -> Result<()> {
                 println!("\nAlready using V2 Git-native storage. Nothing to do.");
                 println!("Use --force to re-run migration.");
             }
-        }
+        },
 
         StorageVersion::Mixed => {
             println!("\nMixed storage detected (both V1 and V2 refs exist).");
@@ -75,7 +75,7 @@ pub fn execute(args: MigrateArgs) -> Result<()> {
                 cleanup_v1_storage(&agit_dir)?;
                 println!("Old storage removed.");
             }
-        }
+        },
     }
 
     Ok(())

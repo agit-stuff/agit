@@ -83,7 +83,11 @@ pub fn execute(args: PullArgs) -> Result<()> {
         .filter_map(|r| r.ok())
         .collect();
 
-    println!("\nFetched {} agit ref(s) from '{}'", refs.len(), args.remote);
+    println!(
+        "\nFetched {} agit ref(s) from '{}'",
+        refs.len(),
+        args.remote
+    );
 
     // Show the refs
     if !refs.is_empty() {

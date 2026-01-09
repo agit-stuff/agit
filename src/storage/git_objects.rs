@@ -48,9 +48,8 @@ impl ObjectStore for GitObjectStore {
     fn load(&self, hash: &str) -> Result<Vec<u8>> {
         let repo = self.repo()?;
 
-        let oid = Oid::from_str(hash).map_err(|_| {
-            AgitError::Storage(StorageError::InvalidHash(hash.to_string()))
-        })?;
+        let oid = Oid::from_str(hash)
+            .map_err(|_| AgitError::Storage(StorageError::InvalidHash(hash.to_string())))?;
 
         let blob = repo.find_blob(oid).map_err(|e| {
             if e.code() == git2::ErrorCode::NotFound {
@@ -73,7 +72,8 @@ impl ObjectStore for GitObjectStore {
             Err(_) => return Ok(false),
         };
 
-        Ok(repo.find_blob(oid).is_ok())
+        let exists = repo.find_blob(oid).is_ok();
+        Ok(exists)
     }
 
     fn delete(&self, _hash: &str) -> Result<()> {
@@ -90,7 +90,6 @@ unsafe impl Sync for GitObjectStore {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs;
     use tempfile::TempDir;
 
     fn setup() -> (TempDir, GitObjectStore) {

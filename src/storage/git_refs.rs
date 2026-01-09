@@ -51,7 +51,7 @@ impl RefStore for GitRefStore {
         let repo = self.repo()?;
         let full_name = Self::full_ref_name(ref_name);
 
-        match repo.find_reference(&full_name) {
+        let result = match repo.find_reference(&full_name) {
             Ok(reference) => {
                 let oid = reference.target().ok_or_else(|| {
                     AgitError::Storage(StorageError::Corrupt {
@@ -60,19 +60,19 @@ impl RefStore for GitRefStore {
                     })
                 })?;
                 Ok(Some(oid.to_string()))
-            }
+            },
             Err(e) if e.code() == ErrorCode::NotFound => Ok(None),
             Err(e) => Err(AgitError::Git(e)),
-        }
+        };
+        result
     }
 
     fn update(&self, ref_name: &str, hash: &str) -> Result<()> {
         let repo = self.repo()?;
         let full_name = Self::full_ref_name(ref_name);
 
-        let oid = Oid::from_str(hash).map_err(|_| {
-            AgitError::Storage(StorageError::InvalidHash(hash.to_string()))
-        })?;
+        let oid = Oid::from_str(hash)
+            .map_err(|_| AgitError::Storage(StorageError::InvalidHash(hash.to_string())))?;
 
         repo.reference(
             &full_name,
@@ -88,14 +88,15 @@ impl RefStore for GitRefStore {
         let repo = self.repo()?;
         let full_name = Self::full_ref_name(ref_name);
 
-        match repo.find_reference(&full_name) {
+        let result = match repo.find_reference(&full_name) {
             Ok(mut reference) => {
                 reference.delete()?;
                 Ok(())
-            }
+            },
             Err(e) if e.code() == ErrorCode::NotFound => Ok(()),
             Err(e) => Err(AgitError::Git(e)),
-        }
+        };
+        result
     }
 
     fn list(&self) -> Result<Vec<String>> {
@@ -126,7 +127,6 @@ unsafe impl Sync for GitRefStore {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs;
     use tempfile::TempDir;
 
     fn setup() -> (TempDir, GitRefStore, Repository) {
@@ -134,13 +134,15 @@ mod tests {
         let repo = Repository::init(temp.path()).unwrap();
 
         // Create an initial commit so we have something to reference
-        let sig = repo.signature().unwrap_or_else(|_| {
-            git2::Signature::now("Test", "test@test.com").unwrap()
-        });
-        let tree_id = repo.index().unwrap().write_tree().unwrap();
-        let tree = repo.find_tree(tree_id).unwrap();
-        repo.commit(Some("HEAD"), &sig, &sig, "Initial commit", &tree, &[])
-            .unwrap();
+        {
+            let sig = repo
+                .signature()
+                .unwrap_or_else(|_| git2::Signature::now("Test", "test@test.com").unwrap());
+            let tree_id = repo.index().unwrap().write_tree().unwrap();
+            let tree = repo.find_tree(tree_id).unwrap();
+            repo.commit(Some("HEAD"), &sig, &sig, "Initial commit", &tree, &[])
+                .unwrap();
+        }
 
         let store = GitRefStore::new(temp.path());
         (temp, store, repo)

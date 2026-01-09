@@ -141,10 +141,8 @@ impl BranchSync {
         match agit_branch {
             Some(ref ab) if ab == &git_branch => {
                 // Already in sync - no action needed
-                Ok(EnsureSyncResult::AlreadyInSync {
-                    branch: git_branch,
-                })
-            }
+                Ok(EnsureSyncResult::AlreadyInSync { branch: git_branch })
+            },
             Some(old_branch) => {
                 // Git switched to a different branch
                 if self.ref_store.get(&git_branch)?.is_some() {
@@ -168,7 +166,7 @@ impl BranchSync {
                         fork_point,
                     })
                 }
-            }
+            },
             None => {
                 // No AGIT HEAD set - fresh initialization
                 self.head_store.set(&git_branch)?;
@@ -177,7 +175,7 @@ impl BranchSync {
                     new_branch: git_branch,
                     fork_point: None,
                 })
-            }
+            },
         }
     }
 }

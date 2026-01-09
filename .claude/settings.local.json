@@ -41,7 +41,8 @@
       "Bash(/c/Users/Burak/.cargo/bin/cargo test:*)",
       "Bash(cat:*)",
       "Bash(del /f \"d:\\\\Repos\\\\agit\\\\nul\")",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(cmd.exe /c \"cargo build 2>&1\")"
     ]
   }
 }
