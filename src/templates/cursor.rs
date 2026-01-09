@@ -27,4 +27,21 @@ Before making assumptions about past decisions, search the project history:
   Search for context first to understand the intent behind the current implementation.
 
 Example: `agit_get_relevant_context(query="authentication JWT")` to find why JWT was chosen.
+
+## AUTO-CONTEXT INJECTION
+
+When you start working on or reading a file, proactively gather context:
+
+- BEFORE modifying any file, call `agit_get_file_history` with the filepath to understand
+  past changes and reasoning behind the current implementation.
+
+- When you open a file and see patterns you don't understand, call `agit_get_file_history`
+  to discover WHY the code was written that way.
+
+- This is especially important for:
+  * Files with non-obvious patterns or workarounds
+  * Configuration files with specific settings
+  * Core modules that other code depends on
+
+Example: `agit_get_file_history(filepath="src/auth/jwt.rs")` before modifying authentication code.
 "#;

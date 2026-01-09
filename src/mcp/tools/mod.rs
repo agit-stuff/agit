@@ -4,6 +4,7 @@
 //! AI editors can call to interact with AGIT.
 
 pub mod get_context;
+pub mod get_file_history;
 pub mod get_recent_summaries;
 pub mod log_step;
 pub mod read_roadmap;
