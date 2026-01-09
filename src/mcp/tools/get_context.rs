@@ -5,17 +5,20 @@
 
 use std::path::Path;
 
+use git2::Repository;
 use serde_json::Value;
 use tracing::{debug, error};
 
+use crate::core::{detect_version, StorageVersion};
 use crate::domain::{ObjectType, WrappedBlob, WrappedNeuralCommit};
 use crate::mcp::protocol::{GetContextParams, ToolCallResult};
 use crate::storage::{
-    FileHeadStore, FileObjectStore, FileRefStore, HeadStore, ObjectStore, RefStore,
+    FileHeadStore, FileObjectStore, FileRefStore, GitObjectStore, GitRefStore, HeadStore,
+    ObjectStore, RefStore,
 };
 
 /// Execute the agit_get_context tool.
-pub fn execute(agit_dir: &Path, arguments: Option<Value>) -> ToolCallResult {
+pub fn execute(project_root: &Path, agit_dir: &Path, arguments: Option<Value>) -> ToolCallResult {
     // Parse arguments
     let args = match arguments {
         Some(v) => v,
@@ -38,7 +41,7 @@ pub fn execute(agit_dir: &Path, arguments: Option<Value>) -> ToolCallResult {
     }
 
     // Find and return the context
-    match find_context_for_git_hash(agit_dir, &params.git_hash) {
+    match find_context_for_git_hash(project_root, agit_dir, &params.git_hash) {
         Ok(context) => ToolCallResult::text(&context),
         Err(e) => {
             debug!("Failed to find context: {}", e);
@@ -51,10 +54,18 @@ pub fn execute(agit_dir: &Path, arguments: Option<Value>) -> ToolCallResult {
 }
 
 /// Find the neural commit context for a given git hash.
-fn find_context_for_git_hash(agit_dir: &Path, git_hash: &str) -> Result<String, String> {
-    let object_store = FileObjectStore::new(agit_dir);
-    let ref_store = FileRefStore::new(agit_dir);
+fn find_context_for_git_hash(
+    project_root: &Path,
+    agit_dir: &Path,
+    git_hash: &str,
+) -> Result<String, String> {
     let head_store = FileHeadStore::new(agit_dir);
+
+    // Detect storage version
+    let is_v2 = match Repository::discover(project_root) {
+        Ok(repo) => matches!(detect_version(agit_dir, &repo), StorageVersion::V2GitNative),
+        Err(_) => false,
+    };
 
     // Get current branch
     let branch = head_store
@@ -63,15 +74,31 @@ fn find_context_for_git_hash(agit_dir: &Path, git_hash: &str) -> Result<String, 
         .unwrap_or_else(|| "main".to_string());
 
     // Start from the latest commit and walk back
-    let mut current_hash = ref_store
-        .get(&branch)
-        .map_err(|e| format!("Failed to read ref: {}", e))?;
+    let mut current_hash: Option<String> = if is_v2 {
+        let ref_store = GitRefStore::new(project_root);
+        ref_store
+            .get(&branch)
+            .map_err(|e| format!("Failed to read ref: {}", e))?
+    } else {
+        let ref_store = FileRefStore::new(agit_dir);
+        ref_store
+            .get(&branch)
+            .map_err(|e| format!("Failed to read ref: {}", e))?
+    };
 
     while let Some(hash) = current_hash {
         // Load the commit
-        let commit_data = object_store
-            .load(&hash)
-            .map_err(|e| format!("Failed to load commit: {}", e))?;
+        let commit_data = if is_v2 {
+            let object_store = GitObjectStore::new(project_root);
+            object_store
+                .load(&hash)
+                .map_err(|e| format!("Failed to load commit: {}", e))?
+        } else {
+            let object_store = FileObjectStore::new(agit_dir);
+            object_store
+                .load(&hash)
+                .map_err(|e| format!("Failed to load commit: {}", e))?
+        };
 
         let wrapped: WrappedNeuralCommit = serde_json::from_slice(&commit_data)
             .map_err(|e| format!("Failed to parse commit: {}", e))?;
@@ -93,7 +120,15 @@ fn find_context_for_git_hash(agit_dir: &Path, git_hash: &str) -> Result<String, 
             context.push_str(&format!("## Summary\n\n{}\n\n", commit.summary));
 
             // Try to load the trace
-            if let Ok(trace_data) = object_store.load(&commit.trace_hash) {
+            let trace_result = if is_v2 {
+                let object_store = GitObjectStore::new(project_root);
+                object_store.load(&commit.trace_hash)
+            } else {
+                let object_store = FileObjectStore::new(agit_dir);
+                object_store.load(&commit.trace_hash)
+            };
+
+            if let Ok(trace_data) = trace_result {
                 if let Ok(trace_blob) = serde_json::from_slice::<WrappedBlob>(&trace_data) {
                     if trace_blob.object_type == ObjectType::Blob {
                         context.push_str("## Trace\n\n```\n");
@@ -106,7 +141,7 @@ fn find_context_for_git_hash(agit_dir: &Path, git_hash: &str) -> Result<String, 
             return Ok(context);
         }
 
-        current_hash = commit.parent_hash.clone();
+        current_hash = commit.first_parent().map(|s| s.to_string());
     }
 
     Err("Not found in neural commit history".to_string())
@@ -121,29 +156,32 @@ mod tests {
     #[test]
     fn test_get_context_not_initialized() {
         let temp = TempDir::new().unwrap();
+        let project_root = temp.path();
         let agit_dir = temp.path().join(".agit");
 
         let args = json!({
             "git_hash": "abc123"
         });
 
-        let result = execute(&agit_dir, Some(args));
+        let result = execute(project_root, &agit_dir, Some(args));
         assert_eq!(result.is_error, Some(true));
     }
 
     #[test]
     fn test_get_context_missing_args() {
         let temp = TempDir::new().unwrap();
+        let project_root = temp.path();
         let agit_dir = temp.path().join(".agit");
         std::fs::create_dir_all(&agit_dir).unwrap();
 
-        let result = execute(&agit_dir, None);
+        let result = execute(project_root, &agit_dir, None);
         assert_eq!(result.is_error, Some(true));
     }
 
     #[test]
     fn test_get_context_no_commits() {
         let temp = TempDir::new().unwrap();
+        let project_root = temp.path();
         let agit_dir = temp.path().join(".agit");
 
         // Create basic structure
@@ -155,7 +193,7 @@ mod tests {
             "git_hash": "abc123"
         });
 
-        let result = execute(&agit_dir, Some(args));
+        let result = execute(project_root, &agit_dir, Some(args));
         assert_eq!(result.is_error, Some(true));
     }
 }

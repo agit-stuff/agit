@@ -3,6 +3,7 @@
 use std::path::Path;
 
 use crate::cli::args::RecordArgs;
+use crate::core::{ensure_sync, EnsureSyncResult};
 use crate::domain::{Category, IndexEntry, Role};
 use crate::error::{AgitError, Result};
 use crate::storage::{FileIndexStore, IndexStore};
@@ -15,6 +16,19 @@ pub fn execute(args: RecordArgs) -> Result<()> {
     // Check if initialized
     if !agit_dir.exists() {
         return Err(AgitError::NotInitialized);
+    }
+
+    // Ensure branch sync
+    if let Some(result) = ensure_sync(&cwd, &agit_dir)? {
+        match &result {
+            EnsureSyncResult::ForkedToNew { new_branch, .. } => {
+                println!("Syncing Agit memory to new branch: '{}'", new_branch);
+            },
+            EnsureSyncResult::SwitchedToExisting { new_branch, .. } => {
+                println!("Syncing Agit memory to branch: '{}'", new_branch);
+            },
+            _ => {},
+        }
     }
 
     // Determine role and category

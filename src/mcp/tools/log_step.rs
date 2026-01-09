@@ -6,8 +6,9 @@
 use std::path::Path;
 
 use serde_json::Value;
-use tracing::{debug, error};
+use tracing::{debug, error, warn};
 
+use crate::core::ensure_sync;
 use crate::domain::{Category, IndexEntry, Role};
 use crate::mcp::protocol::{LogStepParams, ToolCallResult};
 use crate::storage::{FileIndexStore, IndexStore};
@@ -58,6 +59,14 @@ pub fn execute(agit_dir: &Path, arguments: Option<Value>) -> ToolCallResult {
     // Check if agit is initialized
     if !agit_dir.exists() {
         return ToolCallResult::error("AGIT not initialized. Run 'agit init' first.");
+    }
+
+    // Ensure branch sync (derive project root from agit_dir)
+    if let Some(project_root) = agit_dir.parent() {
+        if let Err(e) = ensure_sync(project_root, agit_dir) {
+            warn!("Branch sync failed: {}", e);
+            // Continue anyway - sync failure shouldn't block logging
+        }
     }
 
     // Create the index entry

@@ -5,25 +5,18 @@ use std::path::Path;
 
 use crate::cli::args::InitArgs;
 use crate::error::{AgitError, Result};
-use crate::storage::{FileHeadStore, FileIndexStore, FileRefStore};
+use crate::storage::{FileHeadStore, FileIndexStore};
 use crate::templates::TEMPLATE_FILES;
 
 /// The AGIT directory name.
 const AGIT_DIR: &str = ".agit";
 
-/// Entries to add to .gitignore for AGIT.
-const GITIGNORE_ENTRIES: &str = r#"
-# AGIT - AI-Native Git Wrapper
-# Local state (not shared)
-.agit/config.json
-.agit/HEAD
-.agit/index
-.agit/LOCK
-.agit/tmp/
-
-# Shared data (tracked)
-!/.agit/objects/
-!/.agit/refs/
+/// Entries to add to .gitignore for AGIT (V2 Git-native storage).
+/// In V2, all .agit/ content is local since shared data lives in Git refs.
+const GITIGNORE_ENTRIES_V2: &str = r#"
+# AGIT - AI-Native Git Wrapper (V2 Git-native storage)
+# All local state - shared data is in refs/agit/* and Git ODB
+.agit/
 
 # MCP configs (shared with team)
 !.mcp.json
@@ -80,31 +73,35 @@ pub fn execute(args: InitArgs) -> Result<()> {
     Ok(())
 }
 
-/// Create the `.agit` directory structure.
+/// Create the `.agit` directory structure for V2 (Git-native) storage.
+///
+/// V2 storage uses Git's ODB for objects and refs/agit/* for branch refs,
+/// so we only need local state files in .agit/:
+/// - HEAD: Current branch pointer (local)
+/// - index: Staged trace entries (local)
+/// - config.json: Local configuration
+/// - tmp/: Temporary files
 fn create_agit_structure(agit_dir: &Path) -> Result<()> {
-    // Create main directories
+    // Create main directory and tmp
     fs::create_dir_all(agit_dir)?;
-    fs::create_dir_all(agit_dir.join("objects"))?;
-    fs::create_dir_all(agit_dir.join("refs").join("heads"))?;
     fs::create_dir_all(agit_dir.join("tmp"))?;
 
-    // Create empty config.json
+    // Create config.json with storage version
     let config_path = agit_dir.join("config.json");
     if !config_path.exists() {
-        fs::write(&config_path, "{}\n")?;
+        fs::write(&config_path, "{\"storage_version\": 2}\n")?;
     }
 
-    // Initialize HEAD to main
+    // Initialize HEAD to main (local state only)
     let head_store = FileHeadStore::new(agit_dir);
     head_store.ensure_exists("main")?;
 
-    // Initialize empty index
+    // Initialize empty index (local state only)
     let index_store = FileIndexStore::new(agit_dir);
     index_store.ensure_exists()?;
 
-    // Initialize refs directory
-    let ref_store = FileRefStore::new(agit_dir);
-    ref_store.ensure_exists()?;
+    // Note: For V2, we don't create objects/ or refs/heads/ directories
+    // Objects are stored in Git ODB, refs are stored in refs/agit/heads/*
 
     Ok(())
 }
@@ -232,6 +229,7 @@ fn generate_mcp_configs(project_dir: &Path) -> Result<()> {
 }
 
 /// Update .gitignore with AGIT entries.
+/// Uses V2 (Git-native) entries by default.
 fn update_gitignore(project_dir: &Path) -> Result<()> {
     let gitignore_path = project_dir.join(".gitignore");
 
@@ -246,11 +244,11 @@ fn update_gitignore(project_dir: &Path) -> Result<()> {
         return Ok(());
     }
 
-    // Append AGIT entries
+    // Append AGIT V2 entries (Git-native storage)
     let new_content = if existing.ends_with('\n') || existing.is_empty() {
-        format!("{}{}", existing, GITIGNORE_ENTRIES)
+        format!("{}{}", existing, GITIGNORE_ENTRIES_V2)
     } else {
-        format!("{}\n{}", existing, GITIGNORE_ENTRIES)
+        format!("{}\n{}", existing, GITIGNORE_ENTRIES_V2)
     };
 
     fs::write(&gitignore_path, new_content)?;
@@ -276,13 +274,20 @@ mod tests {
 
         create_agit_structure(&agit_dir).unwrap();
 
+        // V2 structure: only local state files, no objects/ or refs/
         assert!(agit_dir.exists());
-        assert!(agit_dir.join("objects").exists());
-        assert!(agit_dir.join("refs/heads").exists());
         assert!(agit_dir.join("tmp").exists());
         assert!(agit_dir.join("config.json").exists());
         assert!(agit_dir.join("HEAD").exists());
         assert!(agit_dir.join("index").exists());
+
+        // V2: objects and refs are NOT in .agit/ (they're in Git ODB and refs/agit/*)
+        assert!(!agit_dir.join("objects").exists());
+        assert!(!agit_dir.join("refs").exists());
+
+        // Verify config has storage version
+        let config = fs::read_to_string(agit_dir.join("config.json")).unwrap();
+        assert!(config.contains("\"storage_version\": 2"));
     }
 
     #[test]
@@ -369,7 +374,8 @@ mod tests {
 
         let content = fs::read_to_string(temp.path().join(".gitignore")).unwrap();
         assert!(content.contains("# AGIT - AI-Native Git Wrapper"));
-        assert!(content.contains(".agit/config.json"));
+        // V2: entire .agit/ is ignored (local state only)
+        assert!(content.contains(".agit/"));
     }
 
     #[test]

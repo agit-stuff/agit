@@ -17,8 +17,14 @@ pub struct NeuralCommit {
     pub git_hash: String,
 
     /// The parent neural commit hash (for walking the neural graph).
+    /// Deprecated: Use `parent_hashes` for new commits.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub parent_hash: Option<String>,
+
+    /// Parent neural commit hashes (supports merge commits).
+    /// First parent is the main line, additional parents are merged branches.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub parent_hashes: Vec<String>,
 
     /// Author of the commit.
     pub author: String,
@@ -38,7 +44,9 @@ pub struct NeuralCommit {
 }
 
 impl NeuralCommit {
-    /// Create a new neural commit.
+    /// Create a new neural commit with a single parent.
+    ///
+    /// This is the standard constructor for non-merge commits.
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         git_hash: impl Into<String>,
@@ -51,6 +59,32 @@ impl NeuralCommit {
         Self {
             git_hash: git_hash.into(),
             parent_hash,
+            parent_hashes: Vec::new(),
+            author: author.into(),
+            roadmap_hash: roadmap_hash.into(),
+            trace_hash: trace_hash.into(),
+            summary: summary.into(),
+            created_at: Utc::now(),
+        }
+    }
+
+    /// Create a new neural commit with multiple parents.
+    ///
+    /// Use this for merge commits where we're combining memory from
+    /// multiple branches.
+    #[allow(clippy::too_many_arguments)]
+    pub fn new_with_parents(
+        git_hash: impl Into<String>,
+        parent_hashes: Vec<String>,
+        author: impl Into<String>,
+        roadmap_hash: impl Into<String>,
+        trace_hash: impl Into<String>,
+        summary: impl Into<String>,
+    ) -> Self {
+        Self {
+            git_hash: git_hash.into(),
+            parent_hash: None,
+            parent_hashes,
             author: author.into(),
             roadmap_hash: roadmap_hash.into(),
             trace_hash: trace_hash.into(),
@@ -61,7 +95,36 @@ impl NeuralCommit {
 
     /// Check if this is the first neural commit (no parent).
     pub fn is_root(&self) -> bool {
-        self.parent_hash.is_none()
+        self.parent_hash.is_none() && self.parent_hashes.is_empty()
+    }
+
+    /// Check if this is a merge commit (multiple parents).
+    pub fn is_merge(&self) -> bool {
+        self.parent_hashes.len() > 1
+    }
+
+    /// Get all parent hashes (handles both old and new format).
+    ///
+    /// Returns an empty vec for root commits.
+    pub fn parents(&self) -> Vec<&str> {
+        if !self.parent_hashes.is_empty() {
+            self.parent_hashes.iter().map(|s| s.as_str()).collect()
+        } else if let Some(ref p) = self.parent_hash {
+            vec![p.as_str()]
+        } else {
+            vec![]
+        }
+    }
+
+    /// Get the first parent (main line).
+    ///
+    /// For merge commits, this is the branch that was being worked on.
+    pub fn first_parent(&self) -> Option<&str> {
+        if !self.parent_hashes.is_empty() {
+            Some(&self.parent_hashes[0])
+        } else {
+            self.parent_hash.as_deref()
+        }
     }
 
     /// Get a short version of the git hash (first 7 characters).

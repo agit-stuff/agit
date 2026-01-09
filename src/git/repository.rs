@@ -18,6 +18,18 @@ impl GitRepository {
         Ok(Self { repo })
     }
 
+    /// Get the path to the repository working directory.
+    ///
+    /// This is the root directory containing `.git/`.
+    pub fn workdir(&self) -> Option<&Path> {
+        self.repo.workdir()
+    }
+
+    /// Get the path to the `.git` directory.
+    pub fn git_dir(&self) -> &Path {
+        self.repo.path()
+    }
+
     /// Get the current branch name.
     pub fn current_branch(&self) -> Result<String> {
         let head = self.repo.head()?;
@@ -144,6 +156,68 @@ impl GitRepository {
 
         index.write()?;
         Ok(count)
+    }
+
+    /// Check if there are changes outside the .agit/ directory.
+    ///
+    /// This is used to detect "code changes" vs "memory-only changes".
+    pub fn has_code_changes(&self) -> Result<bool> {
+        let statuses = self.repo.statuses(None)?;
+
+        for entry in statuses.iter() {
+            if let Some(path) = entry.path() {
+                // Check if path is NOT under .agit/
+                if !path.starts_with(".agit/") && !path.starts_with(".agit\\") {
+                    return Ok(true);
+                }
+            }
+        }
+
+        Ok(false)
+    }
+
+    /// Check if there are ONLY .agit/ directory changes.
+    ///
+    /// Returns true if there are changes and ALL of them are under .agit/.
+    /// Returns false if there are no changes or if any changes are outside .agit/.
+    pub fn has_agit_only_changes(&self) -> Result<bool> {
+        let statuses = self.repo.statuses(None)?;
+        let mut has_agit_changes = false;
+
+        for entry in statuses.iter() {
+            if let Some(path) = entry.path() {
+                if path.starts_with(".agit/") || path.starts_with(".agit\\") {
+                    has_agit_changes = true;
+                } else {
+                    // Found a non-.agit change
+                    return Ok(false);
+                }
+            }
+        }
+
+        Ok(has_agit_changes)
+    }
+
+    /// Check if we're currently in a merge state.
+    ///
+    /// This is detected by the presence of .git/MERGE_HEAD file.
+    pub fn is_merging(&self) -> Result<bool> {
+        let merge_head_path = self.repo.path().join("MERGE_HEAD");
+        Ok(merge_head_path.exists())
+    }
+
+    /// Get the MERGE_HEAD hash if in merge state.
+    ///
+    /// Returns None if not in merge state.
+    pub fn merge_head_hash(&self) -> Result<Option<String>> {
+        let merge_head_path = self.repo.path().join("MERGE_HEAD");
+
+        if merge_head_path.exists() {
+            let content = std::fs::read_to_string(&merge_head_path)?;
+            Ok(Some(content.trim().to_string()))
+        } else {
+            Ok(None)
+        }
     }
 }
 

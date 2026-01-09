@@ -5,27 +5,28 @@
 
 use std::path::Path;
 
+use git2::Repository;
 use serde_json::Value;
 use tracing::debug;
 
+use crate::core::{detect_version, StorageVersion};
 use crate::domain::WrappedNeuralCommit;
 use crate::mcp::protocol::{GetRecentSummariesParams, ToolCallResult};
 use crate::storage::{
-    FileHeadStore, FileObjectStore, FileRefStore, HeadStore, ObjectStore, RefStore,
+    FileHeadStore, FileObjectStore, FileRefStore, GitObjectStore, GitRefStore, HeadStore,
+    ObjectStore, RefStore,
 };
 
 /// Default number of recent summaries to return.
 const DEFAULT_COUNT: usize = 5;
 
 /// Execute the agit_get_recent_summaries tool.
-pub fn execute(agit_dir: &Path, arguments: Option<Value>) -> ToolCallResult {
+pub fn execute(project_root: &Path, agit_dir: &Path, arguments: Option<Value>) -> ToolCallResult {
     // Parse arguments (count is optional)
     let count = match arguments {
-        Some(v) => {
-            match serde_json::from_value::<GetRecentSummariesParams>(v) {
-                Ok(p) => p.count.unwrap_or(DEFAULT_COUNT),
-                Err(_) => DEFAULT_COUNT,
-            }
+        Some(v) => match serde_json::from_value::<GetRecentSummariesParams>(v) {
+            Ok(p) => p.count.unwrap_or(DEFAULT_COUNT),
+            Err(_) => DEFAULT_COUNT,
         },
         None => DEFAULT_COUNT,
     };
@@ -36,7 +37,7 @@ pub fn execute(agit_dir: &Path, arguments: Option<Value>) -> ToolCallResult {
     }
 
     // Get recent summaries
-    match get_recent_summaries(agit_dir, count) {
+    match get_recent_summaries(project_root, agit_dir, count) {
         Ok(summaries) => ToolCallResult::text(&summaries),
         Err(e) => {
             debug!("Failed to get recent summaries: {}", e);
@@ -51,10 +52,18 @@ pub fn execute(agit_dir: &Path, arguments: Option<Value>) -> ToolCallResult {
 }
 
 /// Get recent commit summaries from the neural commit history.
-fn get_recent_summaries(agit_dir: &Path, count: usize) -> Result<String, String> {
-    let object_store = FileObjectStore::new(agit_dir);
-    let ref_store = FileRefStore::new(agit_dir);
+fn get_recent_summaries(
+    project_root: &Path,
+    agit_dir: &Path,
+    count: usize,
+) -> Result<String, String> {
     let head_store = FileHeadStore::new(agit_dir);
+
+    // Detect storage version
+    let is_v2 = match Repository::discover(project_root) {
+        Ok(repo) => matches!(detect_version(agit_dir, &repo), StorageVersion::V2GitNative),
+        Err(_) => false,
+    };
 
     // Get current branch
     let branch = head_store
@@ -63,9 +72,17 @@ fn get_recent_summaries(agit_dir: &Path, count: usize) -> Result<String, String>
         .unwrap_or_else(|| "main".to_string());
 
     // Start from the latest commit and walk back
-    let mut current_hash = ref_store
-        .get(&branch)
-        .map_err(|e| format!("Failed to read ref: {}", e))?;
+    let mut current_hash: Option<String> = if is_v2 {
+        let ref_store = GitRefStore::new(project_root);
+        ref_store
+            .get(&branch)
+            .map_err(|e| format!("Failed to read ref: {}", e))?
+    } else {
+        let ref_store = FileRefStore::new(agit_dir);
+        ref_store
+            .get(&branch)
+            .map_err(|e| format!("Failed to read ref: {}", e))?
+    };
 
     if current_hash.is_none() {
         return Err("No commits yet".to_string());
@@ -79,9 +96,17 @@ fn get_recent_summaries(agit_dir: &Path, count: usize) -> Result<String, String>
         }
 
         // Load the commit
-        let commit_data = object_store
-            .load(&hash)
-            .map_err(|e| format!("Failed to load commit: {}", e))?;
+        let commit_data = if is_v2 {
+            let object_store = GitObjectStore::new(project_root);
+            object_store
+                .load(&hash)
+                .map_err(|e| format!("Failed to load commit: {}", e))?
+        } else {
+            let object_store = FileObjectStore::new(agit_dir);
+            object_store
+                .load(&hash)
+                .map_err(|e| format!("Failed to load commit: {}", e))?
+        };
 
         let wrapped: WrappedNeuralCommit = serde_json::from_slice(&commit_data)
             .map_err(|e| format!("Failed to parse commit: {}", e))?;
@@ -97,7 +122,7 @@ fn get_recent_summaries(agit_dir: &Path, count: usize) -> Result<String, String>
             commit.summary
         ));
 
-        current_hash = commit.parent_hash.clone();
+        current_hash = commit.first_parent().map(|s| s.to_string());
     }
 
     if summaries.is_empty() {
@@ -119,15 +144,17 @@ mod tests {
     #[test]
     fn test_get_recent_summaries_not_initialized() {
         let temp = TempDir::new().unwrap();
+        let project_root = temp.path();
         let agit_dir = temp.path().join(".agit");
 
-        let result = execute(&agit_dir, None);
+        let result = execute(project_root, &agit_dir, None);
         assert_eq!(result.is_error, Some(true));
     }
 
     #[test]
     fn test_get_recent_summaries_no_commits() {
         let temp = TempDir::new().unwrap();
+        let project_root = temp.path();
         let agit_dir = temp.path().join(".agit");
 
         // Create basic structure without any commits
@@ -136,7 +163,7 @@ mod tests {
         std::fs::write(agit_dir.join("HEAD"), "main").unwrap();
         std::fs::write(agit_dir.join("index"), "").unwrap();
 
-        let result = execute(&agit_dir, None);
+        let result = execute(project_root, &agit_dir, None);
         // Should return a helpful message, not an error
         assert!(result.is_error.is_none());
     }
@@ -144,6 +171,7 @@ mod tests {
     #[test]
     fn test_get_recent_summaries_with_count() {
         let temp = TempDir::new().unwrap();
+        let project_root = temp.path();
         let agit_dir = temp.path().join(".agit");
 
         // Create basic structure
@@ -155,7 +183,7 @@ mod tests {
             "count": 3
         });
 
-        let result = execute(&agit_dir, Some(args));
+        let result = execute(project_root, &agit_dir, Some(args));
         // Should return a helpful message for empty history
         assert!(result.is_error.is_none());
     }

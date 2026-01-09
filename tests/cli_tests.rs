@@ -67,13 +67,17 @@ fn test_init_creates_agit_directory() {
         .success()
         .stdout(predicate::str::contains("Initialized AGIT"));
 
-    // Verify .agit directory structure
+    // Verify .agit directory structure (V2 Git-native storage)
     let agit_dir = temp.path().join(".agit");
     assert!(agit_dir.exists());
-    assert!(agit_dir.join("objects").is_dir());
-    assert!(agit_dir.join("refs/heads").is_dir());
+    // V2: local state files only (objects in Git ODB, refs in refs/agit/*)
+    assert!(agit_dir.join("tmp").is_dir());
+    assert!(agit_dir.join("config.json").exists());
     assert!(agit_dir.join("HEAD").exists());
     assert!(agit_dir.join("index").exists());
+    // V2: objects and refs are NOT in .agit/
+    assert!(!agit_dir.join("objects").exists());
+    assert!(!agit_dir.join("refs").exists());
 }
 
 #[test]
@@ -215,21 +219,21 @@ fn test_commit_creates_neural_commit() {
         .assert()
         .success();
 
-    // Create neural commit
+    // Create neural commit (-y to skip memory-only prompt)
     agit_cmd()
-        .args(["commit", "-m", "Add authentication"])
+        .args(["commit", "-m", "Add authentication", "-y"])
         .current_dir(temp.path())
         .assert()
         .success()
         .stdout(predicate::str::contains("Created neural commit"));
 
-    // Verify objects were created
-    let objects_dir = temp.path().join(".agit/objects");
-    let object_count = fs::read_dir(&objects_dir)
-        .unwrap()
-        .filter(|e| e.as_ref().unwrap().file_type().unwrap().is_dir())
-        .count();
-    assert!(object_count > 0);
+    // V2: Verify commit was created by checking agit log shows something
+    agit_cmd()
+        .arg("log")
+        .current_dir(temp.path())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("commit"));
 }
 
 #[test]
@@ -249,9 +253,9 @@ fn test_commit_clears_index() {
         .assert()
         .success();
 
-    // Commit
+    // Commit (-y to skip memory-only prompt)
     agit_cmd()
-        .args(["commit", "-m", "Test commit"])
+        .args(["commit", "-m", "Test commit", "-y"])
         .current_dir(temp.path())
         .assert()
         .success();
@@ -279,7 +283,7 @@ fn test_log_shows_commits() {
         .success();
 
     agit_cmd()
-        .args(["commit", "-m", "First neural commit"])
+        .args(["commit", "-m", "First neural commit", "-y"])
         .current_dir(temp.path())
         .assert()
         .success();
@@ -331,7 +335,7 @@ fn test_show_displays_commit_details() {
         .success();
 
     agit_cmd()
-        .args(["commit", "-m", "Add feature X"])
+        .args(["commit", "-m", "Add feature X", "-y"])
         .current_dir(temp.path())
         .assert()
         .success();
@@ -387,9 +391,9 @@ fn test_full_workflow() {
         .output()
         .unwrap();
 
-    // 6. Create neural commit
+    // 6. Create neural commit (use -y to skip memory-only prompt since git commit was already made)
     agit_cmd()
-        .args(["commit", "-m", "Add user authentication"])
+        .args(["commit", "-m", "Add user authentication", "-y"])
         .current_dir(temp.path())
         .assert()
         .success();
