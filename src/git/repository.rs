@@ -87,6 +87,47 @@ impl GitRepository {
 
         Ok(files)
     }
+
+    /// Check if there are staged changes ready to commit.
+    pub fn has_staged_changes(&self) -> Result<bool> {
+        Ok(!self.staged_files()?.is_empty())
+    }
+
+    /// Create a git commit with the staged changes.
+    ///
+    /// # Arguments
+    ///
+    /// * `message` - The commit message
+    ///
+    /// # Returns
+    ///
+    /// The hash of the newly created commit.
+    pub fn commit(&self, message: &str) -> Result<String> {
+        // Get the signature from git config
+        let sig = self.repo.signature()?;
+
+        // Get the current index
+        let mut index = self.repo.index()?;
+
+        // Write the index as a tree
+        let tree_id = index.write_tree()?;
+        let tree = self.repo.find_tree(tree_id)?;
+
+        // Get the parent commit (HEAD)
+        let parent = self.repo.head()?.peel_to_commit()?;
+
+        // Create the commit
+        let commit_id = self.repo.commit(
+            Some("HEAD"),
+            &sig,
+            &sig,
+            message,
+            &tree,
+            &[&parent],
+        )?;
+
+        Ok(commit_id.to_string())
+    }
 }
 
 #[cfg(test)]
@@ -146,5 +187,31 @@ mod tests {
         // Create an untracked file
         fs::write(temp.path().join("new.txt"), "content").unwrap();
         assert!(!repo.is_clean().unwrap());
+    }
+
+    #[test]
+    fn test_commit() {
+        let (temp, git_repo) = create_test_repo();
+
+        // Create and stage a new file
+        fs::write(temp.path().join("new_file.txt"), "new content").unwrap();
+
+        let repo = Repository::open(temp.path()).unwrap();
+        let mut index = repo.index().unwrap();
+        index.add_path(Path::new("new_file.txt")).unwrap();
+        index.write().unwrap();
+
+        // Verify we have staged changes
+        assert!(git_repo.has_staged_changes().unwrap());
+
+        // Create a commit
+        let hash = git_repo.commit("Test commit message").unwrap();
+        assert_eq!(hash.len(), 40); // SHA-1 hash
+
+        // Verify the commit is now HEAD
+        assert_eq!(git_repo.head_commit_hash().unwrap(), hash);
+
+        // Verify no more staged changes
+        assert!(!git_repo.has_staged_changes().unwrap());
     }
 }
