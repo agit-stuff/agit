@@ -123,6 +123,28 @@ impl GitRepository {
 
         Ok(commit_id.to_string())
     }
+
+    /// Stage files matching the given pathspecs.
+    pub fn stage_files(&self, pathspecs: &[&str]) -> Result<usize> {
+        let mut index = self.repo.index()?;
+        let mut count = 0;
+
+        index.add_all(
+            pathspecs.iter(),
+            git2::IndexAddOption::DEFAULT,
+            Some(&mut |path, _| {
+                count += 1;
+                println!("  add: {}", path.to_string_lossy());
+                0
+            }),
+        )?;
+
+        // Handle deleted files
+        index.update_all(pathspecs.iter(), None)?;
+
+        index.write()?;
+        Ok(count)
+    }
 }
 
 #[cfg(test)]
