@@ -6,6 +6,8 @@
 
 > "Code is the Artifact. Context is the Source."
 
+**[Documentation](https://agit-stuff.github.io/) · [GitHub](https://github.com/agit-stuff/agit)**
+
 AGIT captures the **reasoning context** (Why/How) alongside your **code changes** (What). It creates a "Neural Graph" parallel to Git's commit graph, giving you and your team a complete history of not just what changed, but *why* it changed and *how* the decision was made.
 
 ## Features
