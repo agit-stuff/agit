@@ -137,6 +137,10 @@ pub struct CommitArgs {
     /// Amend the previous commit
     #[arg(long)]
     pub amend: bool,
+
+    /// Skip interactive prompts (for memory-only commits)
+    #[arg(short, long)]
+    pub yes: bool,
 }
 
 /// Arguments for the `server` command

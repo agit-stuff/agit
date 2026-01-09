@@ -29,7 +29,7 @@ use crate::storage::{
 pub enum ChangeState {
     /// Code + Memory changed - Standard git commit.
     CodeAndMemory,
-    /// Memory only changed - [Agit] prefix commit.
+    /// Memory only changed - \[Agit\] prefix commit.
     MemoryOnly,
     /// Nothing changed - Abort.
     NoChanges,
@@ -43,7 +43,7 @@ pub struct CommitResult {
     pub git_hash: String,
     /// Whether a new git commit was created (vs linking to existing HEAD).
     pub git_commit_created: bool,
-    /// Whether this was a memory-only commit (with [Agit] prefix).
+    /// Whether this was a memory-only commit (with \[Agit\] prefix).
     pub is_memory_only: bool,
 }
 

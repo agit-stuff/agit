@@ -88,45 +88,50 @@ pub fn execute(args: CommitArgs) -> Result<()> {
 
     // Handle Memory-Only state with Intent Check prompt
     if change_state == ChangeState::MemoryOnly {
-        println!();
-        println!("Pending thoughts found, but no code changes detected.");
-        println!();
-        println!("What would you like to do?");
-        println!("  [1] Commit as Plan (Save only reasoning to history)");
-        println!("  [2] Discard Thoughts (Clear pending thoughts)");
-        println!("  [3] Cancel");
-        println!();
+        if args.yes {
+            // Skip prompt in non-interactive mode
+            println!("[Agit] Creating plan commit...");
+        } else {
+            println!();
+            println!("Pending thoughts found, but no code changes detected.");
+            println!();
+            println!("What would you like to do?");
+            println!("  [1] Commit as Plan (Save only reasoning to history)");
+            println!("  [2] Discard Thoughts (Clear pending thoughts)");
+            println!("  [3] Cancel");
+            println!();
 
-        print!("Enter choice [1-3]: ");
-        io::stdout().flush()?;
+            print!("Enter choice [1-3]: ");
+            io::stdout().flush()?;
 
-        let mut input = String::new();
-        io::stdin().read_line(&mut input)?;
+            let mut input = String::new();
+            io::stdin().read_line(&mut input)?;
 
-        match input.trim() {
-            "1" => {
-                // Proceed with memory-only commit
-                println!();
-                println!("[Agit] Creating plan commit...");
-            },
-            "2" => {
-                // Discard thoughts
-                index_store.clear()?;
-                println!();
-                println!("Thoughts discarded. Index cleared.");
-                return Ok(());
-            },
-            "3" | "" => {
-                // Cancel
-                println!();
-                println!("Commit cancelled.");
-                return Ok(());
-            },
-            _ => {
-                println!();
-                println!("Invalid choice. Commit cancelled.");
-                return Ok(());
-            },
+            match input.trim() {
+                "1" => {
+                    // Proceed with memory-only commit
+                    println!();
+                    println!("[Agit] Creating plan commit...");
+                },
+                "2" => {
+                    // Discard thoughts
+                    index_store.clear()?;
+                    println!();
+                    println!("Thoughts discarded. Index cleared.");
+                    return Ok(());
+                },
+                "3" | "" => {
+                    // Cancel
+                    println!();
+                    println!("Commit cancelled.");
+                    return Ok(());
+                },
+                _ => {
+                    println!();
+                    println!("Invalid choice. Commit cancelled.");
+                    return Ok(());
+                },
+            }
         }
     }
 
