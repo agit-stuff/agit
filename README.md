@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/agit-logo.svg" alt="AGIT Logo" width="200">
+</p>
+
 # AGIT - AI-Native Git Wrapper
 
 > "Code is the Artifact. Context is the Source."
@@ -11,12 +15,37 @@ AGIT captures the **reasoning context** (Why/How) alongside your **code changes*
 - **MCP Protocol** - Native Model Context Protocol support for AI tool integration
 - **Git Compatible** - Built on libgit2, works alongside your existing Git workflow
 
+## Installation
+
+### macOS (Homebrew)
+
+```bash
+brew tap agit-stuff/agit
+brew install agit
+```
+
+### Windows (Scoop)
+
+```powershell
+scoop bucket add agit https://github.com/agit-stuff/agit
+scoop install agit
+```
+
+### Linux / macOS / CI
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/agit-stuff/agit/main/install.sh | bash
+```
+
+### From Source (Cargo)
+
+```bash
+cargo install agit
+```
+
 ## Quick Start
 
 ```bash
-# Install (coming soon)
-cargo install agit
-
 # Initialize in your git repository
 cd your-project
 agit init
