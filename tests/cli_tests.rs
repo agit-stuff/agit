@@ -89,7 +89,10 @@ fn test_init_creates_instruction_files() {
     // Verify instruction files were created
     assert!(temp.path().join("CLAUDE.md").exists());
     assert!(temp.path().join(".cursorrules").exists());
-    assert!(temp.path().join(".windsurfrules").exists());
+
+    // Verify MCP config files were created
+    assert!(temp.path().join(".mcp.json").exists());
+    assert!(temp.path().join(".cursor/mcp.json").exists());
 }
 
 #[test]

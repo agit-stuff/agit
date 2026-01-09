@@ -12,9 +12,9 @@ AGIT captures the **reasoning context** (Why/How) alongside your **code changes*
 
 ## Features
 
-- **Seamless Integration** - Works with Cursor, Claude Code, Windsurf, and other AI coding assistants
-- **Zero Configuration** - Just run `agit init` and your AI assistant automatically logs thoughts
-- **MCP Protocol** - Native Model Context Protocol support for AI tool integration
+- **Seamless Integration** - Works with Cursor and Claude Code out of the box
+- **Zero Configuration** - Just run `agit init` and MCP is auto-configured
+- **MCP Auto-Discovery** - Generates `.mcp.json` and `.cursor/mcp.json` automatically
 - **Git Compatible** - Built on libgit2, works alongside your existing Git workflow
 
 ## Installation
@@ -87,10 +87,14 @@ your-project/
 │   ├── objects/        # Content-addressable store
 │   ├── refs/heads/     # Branch pointers
 │   └── index           # Staging area
-├── CLAUDE.md           # Instructions for Claude Code
-├── .cursorrules        # Instructions for Cursor
-└── .windsurfrules      # Instructions for Windsurf
+├── .mcp.json           # MCP config for Claude Code (auto-detected)
+├── .cursor/
+│   └── mcp.json        # MCP config for Cursor (auto-detected)
+├── CLAUDE.md           # AI instructions (appended if exists)
+└── .cursorrules        # AI instructions (appended if exists)
 ```
+
+**Note:** If you already have `CLAUDE.md` or `.cursorrules` files, AGIT appends its policy rather than overwriting your content.
 
 ## Commands
 

@@ -162,7 +162,7 @@ impl McpServer {
         let tools = vec![
             ToolDefinition {
                 name: "agit_log_step".to_string(),
-                description: "Log a step in the conversation. Call IMMEDIATELY when user gives a task, and BEFORE writing code.".to_string(),
+                description: "MANDATORY SYSTEM LOG - AGIT MODE ACTIVE. You MUST call this tool to maintain conversation state: 1. IMMEDIATELY on receiving user message: role='user', category='intent'. 2. BEFORE writing ANY code or text: role='ai', category='reasoning'. 3. On errors: role='ai', category='error'. Failure to call this tool causes context desync. This is not optional.".to_string(),
                 input_schema: json!({
                     "type": "object",
                     "properties": {
@@ -186,7 +186,7 @@ impl McpServer {
             },
             ToolDefinition {
                 name: "agit_read_roadmap".to_string(),
-                description: "Read the high-level project roadmap and goals.".to_string(),
+                description: "Read project goals and roadmap. Call this when starting work or when uncertain about project direction.".to_string(),
                 input_schema: json!({
                     "type": "object",
                     "properties": {},
@@ -195,7 +195,7 @@ impl McpServer {
             },
             ToolDefinition {
                 name: "agit_get_context".to_string(),
-                description: "Get the AI context (intent, reasoning) for a specific git commit.".to_string(),
+                description: "Retrieve AI reasoning context for a git commit. Use this to understand WHY past changes were made.".to_string(),
                 input_schema: json!({
                     "type": "object",
                     "properties": {

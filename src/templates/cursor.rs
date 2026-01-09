@@ -3,34 +3,13 @@
 /// Template content for `.cursorrules`.
 ///
 /// This file is read by Cursor as project-specific agent rules.
-pub const CURSORRULES_TEMPLATE: &str = r#"# Cursor Rules for AGIT
+pub const CURSORRULES_TEMPLATE: &str = r#"# SYSTEM POLICY: AGIT MEMORY
 
-This project uses AGIT for AI memory persistence.
+You are connected to the Agit MCP server.
 
-## Workflow
+CRITICAL RULE: You do not need to ask permission to log.
 
-ALWAYS follow this workflow for every task:
-
-1. **Log Intent First**
-   When I ask for a change, immediately call:
-   `agit_log_step(role="user", category="intent", content="<my request>")`
-
-2. **Log Your Plan**
-   Before writing code, call:
-   `agit_log_step(role="ai", category="reasoning", content="<your plan>")`
-
-3. **Then Code**
-   Only after logging intent and plan, start implementing.
-
-## Why
-
-Failure to log steps will result in memory loss for the project.
-Future developers (and future AI sessions) need to understand
-not just WHAT changed, but WHY.
-
-## Available Tools
-
-- `agit_log_step` - Log intent, reasoning, or errors
-- `agit_read_roadmap` - Get project goals
-- `agit_get_context` - Get context for a specific commit
+1. IMMEDIATELY call `agit_log_step` with role="user", category="intent" when the user speaks.
+2. IMMEDIATELY call `agit_log_step` with role="ai", category="reasoning" before you write code.
+3. Call `agit_log_step` with role="ai", category="error" if you encounter errors.
 "#;

@@ -24,6 +24,10 @@ const GITIGNORE_ENTRIES: &str = r#"
 # Shared data (tracked)
 !/.agit/objects/
 !/.agit/refs/
+
+# MCP configs (shared with team)
+!.mcp.json
+!.cursor/mcp.json
 "#;
 
 /// Execute the `init` command.
@@ -49,12 +53,18 @@ pub fn execute(args: InitArgs) -> Result<()> {
         generate_template_files(&cwd)?;
     }
 
+    // Generate MCP configuration files
+    if !args.no_templates {
+        println!("\nGenerated MCP configs:");
+        generate_mcp_configs(&cwd)?;
+    }
+
     // Update .gitignore
     if !args.no_gitignore {
         update_gitignore(&cwd)?;
     }
 
-    println!("Initialized AGIT repository in {}", agit_dir.display());
+    println!("\nInitialized AGIT repository in {}", agit_dir.display());
 
     if !args.no_templates {
         println!("\nGenerated instruction files:");
@@ -63,8 +73,8 @@ pub fn execute(args: InitArgs) -> Result<()> {
         }
     }
 
-    println!("\nAGIT is ready for Cursor, Claude Code, and Windsurf.");
-    println!("Start your AI assistant and it will automatically log thoughts to AGIT.");
+    println!("\nAGIT is ready! MCP configs auto-detected by Cursor and Claude Code.");
+    println!("Restart your AI assistant to activate AGIT memory.");
 
     Ok(())
 }
@@ -98,18 +108,92 @@ fn create_agit_structure(agit_dir: &Path) -> Result<()> {
     Ok(())
 }
 
+/// Marker to detect if AGIT policy is already present.
+const AGIT_POLICY_MARKER: &str = "# SYSTEM POLICY: AGIT MEMORY";
+
 /// Generate AI instruction template files.
+/// If the file exists, appends AGIT policy to preserve user content.
 fn generate_template_files(project_dir: &Path) -> Result<()> {
     for (filename, content) in TEMPLATE_FILES {
         let path = project_dir.join(filename);
 
-        // Don't overwrite existing files
         if path.exists() {
-            println!("Skipping {} (already exists)", filename);
-            continue;
-        }
+            // Read existing content
+            let existing = fs::read_to_string(&path)?;
 
-        fs::write(&path, content)?;
+            // Check if AGIT policy already exists
+            if existing.contains(AGIT_POLICY_MARKER) {
+                println!("Skipping {} (AGIT policy already present)", filename);
+                continue;
+            }
+
+            // Append AGIT policy to existing content
+            let new_content = if existing.ends_with('\n') {
+                format!("{}\n{}", existing, content)
+            } else {
+                format!("{}\n\n{}", existing, content)
+            };
+            fs::write(&path, new_content)?;
+            println!("Appended AGIT policy to existing {}", filename);
+        } else {
+            // Create new file
+            fs::write(&path, content)?;
+        }
+    }
+
+    Ok(())
+}
+
+/// Get the absolute path to the agit executable.
+fn get_agit_command_path() -> String {
+    // Try to get absolute path to current executable
+    std::env::current_exe()
+        .ok()
+        .and_then(|p| p.to_str().map(|s| s.to_string()))
+        .unwrap_or_else(|| "agit".to_string()) // Fallback to PATH lookup
+}
+
+/// Generate the MCP config JSON content.
+fn generate_mcp_config(agit_path: &str) -> String {
+    // Escape backslashes for JSON on Windows
+    let escaped_path = agit_path.replace('\\', "\\\\");
+    format!(
+        r#"{{
+  "mcpServers": {{
+    "agit": {{
+      "command": "{}",
+      "args": ["server"]
+    }}
+  }}
+}}
+"#,
+        escaped_path
+    )
+}
+
+/// Generate MCP configuration files for Claude Code and Cursor.
+fn generate_mcp_configs(project_dir: &Path) -> Result<()> {
+    let agit_path = get_agit_command_path();
+    let mcp_config = generate_mcp_config(&agit_path);
+
+    // Generate .mcp.json for Claude Code (project root)
+    let mcp_json_path = project_dir.join(".mcp.json");
+    if !mcp_json_path.exists() {
+        fs::write(&mcp_json_path, &mcp_config)?;
+        println!("  - .mcp.json (Claude Code)");
+    } else {
+        println!("  - Skipping .mcp.json (already exists)");
+    }
+
+    // Generate .cursor/mcp.json for Cursor
+    let cursor_dir = project_dir.join(".cursor");
+    fs::create_dir_all(&cursor_dir)?;
+    let cursor_mcp_path = cursor_dir.join("mcp.json");
+    if !cursor_mcp_path.exists() {
+        fs::write(&cursor_mcp_path, &mcp_config)?;
+        println!("  - .cursor/mcp.json (Cursor)");
+    } else {
+        println!("  - Skipping .cursor/mcp.json (already exists)");
     }
 
     Ok(())
@@ -177,7 +261,65 @@ mod tests {
 
         assert!(temp.path().join("CLAUDE.md").exists());
         assert!(temp.path().join(".cursorrules").exists());
-        assert!(temp.path().join(".windsurfrules").exists());
+    }
+
+    #[test]
+    fn test_generate_template_files_appends_to_existing() {
+        let temp = setup_git_repo();
+
+        // Create existing CLAUDE.md with user content
+        let user_content = "# My Project\n\nThis is my custom content.\n";
+        fs::write(temp.path().join("CLAUDE.md"), user_content).unwrap();
+
+        generate_template_files(temp.path()).unwrap();
+
+        // Verify user content is preserved and AGIT policy is appended
+        let content = fs::read_to_string(temp.path().join("CLAUDE.md")).unwrap();
+        assert!(content.contains("# My Project"));
+        assert!(content.contains("This is my custom content"));
+        assert!(content.contains(AGIT_POLICY_MARKER));
+    }
+
+    #[test]
+    fn test_generate_template_files_skips_if_policy_exists() {
+        let temp = setup_git_repo();
+
+        // Create existing file with AGIT policy already present
+        let existing = format!("# My Project\n\n{}\n", AGIT_POLICY_MARKER);
+        fs::write(temp.path().join("CLAUDE.md"), &existing).unwrap();
+
+        generate_template_files(temp.path()).unwrap();
+
+        // Verify content wasn't duplicated
+        let content = fs::read_to_string(temp.path().join("CLAUDE.md")).unwrap();
+        assert_eq!(
+            content.matches(AGIT_POLICY_MARKER).count(),
+            1,
+            "AGIT policy should only appear once"
+        );
+    }
+
+    #[test]
+    fn test_generate_mcp_configs() {
+        let temp = setup_git_repo();
+
+        generate_mcp_configs(temp.path()).unwrap();
+
+        assert!(temp.path().join(".mcp.json").exists());
+        assert!(temp.path().join(".cursor/mcp.json").exists());
+
+        // Verify JSON structure
+        let mcp_content = fs::read_to_string(temp.path().join(".mcp.json")).unwrap();
+        assert!(mcp_content.contains("mcpServers"));
+        assert!(mcp_content.contains("agit"));
+        assert!(mcp_content.contains("server"));
+    }
+
+    #[test]
+    fn test_get_agit_command_path() {
+        let path = get_agit_command_path();
+        // Should either be an absolute path or "agit" fallback
+        assert!(!path.is_empty());
     }
 
     #[test]
