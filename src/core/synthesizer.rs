@@ -45,8 +45,7 @@ impl SynthesizeSummary {
     fn find_last_intent(entries: &[IndexEntry]) -> Option<String> {
         entries
             .iter()
-            .filter(|e| e.role == Role::User && e.category == Category::Intent)
-            .next_back()
+            .rfind(|e| e.role == Role::User && e.category == Category::Intent)
             .map(|e| Self::truncate_content(&e.content))
     }
 
@@ -54,8 +53,7 @@ impl SynthesizeSummary {
     fn find_last_reasoning(entries: &[IndexEntry]) -> Option<String> {
         entries
             .iter()
-            .filter(|e| e.role == Role::Ai && e.category == Category::Reasoning)
-            .next_back()
+            .rfind(|e| e.role == Role::Ai && e.category == Category::Reasoning)
             .map(|e| Self::truncate_content(&e.content))
     }
 
