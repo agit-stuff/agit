@@ -32,6 +32,11 @@ impl FileIndexStore {
         }
         Ok(())
     }
+
+    /// Get the path to the staged-index file.
+    fn staged_path(&self) -> PathBuf {
+        self.index_path.with_file_name("staged-index")
+    }
 }
 
 impl IndexStore for FileIndexStore {
@@ -112,6 +117,55 @@ impl IndexStore for FileIndexStore {
             .map_while(|l| l.ok())
             .filter(|l| !l.trim().is_empty())
             .count())
+    }
+
+    fn freeze(&self) -> Result<()> {
+        if self.index_path.exists() && self.count()? > 0 {
+            fs::copy(&self.index_path, self.staged_path())?;
+            self.clear()?;
+        }
+        Ok(())
+    }
+
+    fn has_staged(&self) -> Result<bool> {
+        Ok(self.staged_path().exists())
+    }
+
+    fn read_staged(&self) -> Result<Vec<IndexEntry>> {
+        let staged_path = self.staged_path();
+        if !staged_path.exists() {
+            return Ok(Vec::new());
+        }
+
+        let file = File::open(&staged_path)?;
+        let reader = BufReader::new(file);
+        let mut entries = Vec::new();
+
+        for (line_num, line) in reader.lines().enumerate() {
+            let line = line?;
+            if line.trim().is_empty() {
+                continue;
+            }
+
+            let entry: IndexEntry = serde_json::from_str(&line).map_err(|e| {
+                AgitError::Index(IndexError::MalformedEntry {
+                    line: line_num + 1,
+                    reason: e.to_string(),
+                })
+            })?;
+
+            entries.push(entry);
+        }
+
+        Ok(entries)
+    }
+
+    fn clear_staged(&self) -> Result<()> {
+        let staged_path = self.staged_path();
+        if staged_path.exists() {
+            fs::remove_file(&staged_path)?;
+        }
+        Ok(())
     }
 }
 

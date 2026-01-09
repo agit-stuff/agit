@@ -46,6 +46,19 @@ pub trait IndexStore: Send + Sync {
     fn is_empty(&self) -> Result<bool> {
         Ok(self.count()? == 0)
     }
+
+    /// Freeze current index to staged-index for commit.
+    /// This copies the index to staged-index and clears the index.
+    fn freeze(&self) -> Result<()>;
+
+    /// Check if staged-index exists.
+    fn has_staged(&self) -> Result<bool>;
+
+    /// Read staged-index entries.
+    fn read_staged(&self) -> Result<Vec<IndexEntry>>;
+
+    /// Clear staged-index after commit.
+    fn clear_staged(&self) -> Result<()>;
 }
 
 /// Branch reference storage trait.
