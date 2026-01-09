@@ -1,5 +1,5 @@
-<p align="center">
-  <img src="assets/agit-logo.svg" alt="AGIT Logo" width="200">
+<p align="left">
+  <img src="assets/agit-logo-text.svg" alt="AGIT Logo" width="200">
 </p>
 
 # AGIT - AI-Native Git Wrapper
