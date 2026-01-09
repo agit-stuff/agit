@@ -65,6 +65,10 @@ pub enum AgitError {
     /// Operation was cancelled by the user.
     #[error("Operation cancelled")]
     Cancelled,
+
+    /// Nothing to commit (no code or memory changes).
+    #[error("Nothing to commit. Record thoughts with 'agit record' or stage code with 'agit add'.")]
+    NothingToCommit,
 }
 
 /// Errors specific to the content-addressable storage layer.
