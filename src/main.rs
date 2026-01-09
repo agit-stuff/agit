@@ -29,6 +29,7 @@ fn run() -> Result<()> {
         Commands::Log(args) => agit::cli::commands::log::execute(args),
         Commands::Show(args) => agit::cli::commands::show::execute(args),
         Commands::Commit(args) => agit::cli::commands::commit::execute(args),
+        Commands::Add(args) => agit::cli::commands::add::execute(args),
         Commands::Server(args) => agit::cli::commands::server::execute(args),
     }
 }

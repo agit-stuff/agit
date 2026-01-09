@@ -37,6 +37,9 @@ pub enum Commands {
     /// Create a commit with linked neural context
     Commit(CommitArgs),
 
+    /// Stage files and freeze context for commit
+    Add(AddArgs),
+
     /// Start the MCP server
     Server(ServerArgs),
 }
@@ -137,4 +140,12 @@ pub struct ServerArgs {
     /// Run in verbose mode
     #[arg(short, long)]
     pub verbose: bool,
+}
+
+/// Arguments for the `add` command
+#[derive(Parser, Debug)]
+pub struct AddArgs {
+    /// Files or patterns to add (e.g., ".", "src/")
+    #[arg(default_value = ".")]
+    pub pathspec: Vec<String>,
 }
