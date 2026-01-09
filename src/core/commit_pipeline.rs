@@ -5,11 +5,12 @@
 //! 2. Read index entries
 //! 3. Create trace blob
 //! 4. Create/get roadmap blob
-//! 5. Get git commit hash
-//! 6. Create neural commit
-//! 7. Update refs
-//! 8. Clear index
-//! 9. Release lock (automatic on drop)
+//! 5. Create git commit (if staged changes exist)
+//! 6. Get git commit hash
+//! 7. Create neural commit
+//! 8. Update refs
+//! 9. Clear index
+//! 10. Release lock (automatic on drop)
 
 use std::path::PathBuf;
 
@@ -29,6 +30,8 @@ pub struct CommitResult {
     pub neural_hash: String,
     /// The hash of the git commit.
     pub git_hash: String,
+    /// Whether a new git commit was created (vs linking to existing HEAD).
+    pub git_commit_created: bool,
 }
 
 /// The commit pipeline orchestrates the full commit workflow.
@@ -67,7 +70,7 @@ impl CommitPipeline {
     ///
     /// * `message` - The git commit message
     /// * `summary` - The synthesized summary for the neural commit
-    pub fn execute(&mut self, _message: &str, summary: &str) -> Result<CommitResult> {
+    pub fn execute(&mut self, message: &str, summary: &str) -> Result<CommitResult> {
         // 1. Acquire exclusive lock
         let _lock = LockGuard::acquire(&lock_path(&self.agit_dir))?;
 
@@ -89,10 +92,13 @@ impl CommitPipeline {
         // 5. Get parent neural commit hash
         let parent_hash = self.refs.get(&branch)?;
 
-        // 6. Execute git commit (this also stages changes if needed)
-        // For now, we just get the current HEAD - actual git commit
-        // should be done by the user with `git commit`
-        let git_hash = self.git.head_commit_hash()?;
+        // 6. Create git commit if there are staged changes
+        let (git_hash, git_commit_created) = if self.git.has_staged_changes()? {
+            (self.git.commit(message)?, true)
+        } else {
+            // No staged changes - link to current HEAD
+            (self.git.head_commit_hash()?, false)
+        };
 
         // 7. Create neural commit
         let author = self
@@ -122,6 +128,7 @@ impl CommitPipeline {
         Ok(CommitResult {
             neural_hash,
             git_hash,
+            git_commit_created,
         })
     }
 
