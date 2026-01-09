@@ -117,14 +117,9 @@ impl GitRepository {
         let parent = self.repo.head()?.peel_to_commit()?;
 
         // Create the commit
-        let commit_id = self.repo.commit(
-            Some("HEAD"),
-            &sig,
-            &sig,
-            message,
-            &tree,
-            &[&parent],
-        )?;
+        let commit_id =
+            self.repo
+                .commit(Some("HEAD"), &sig, &sig, message, &tree, &[&parent])?;
 
         Ok(commit_id.to_string())
     }
@@ -144,6 +139,11 @@ mod tests {
 
         // Create initial commit
         let repo = Repository::open(temp.path()).unwrap();
+
+        // Configure git user for tests (required in CI environments)
+        let mut config = repo.config().unwrap();
+        config.set_str("user.name", "Test User").unwrap();
+        config.set_str("user.email", "test@example.com").unwrap();
         let sig = git2::Signature::now("Test", "test@example.com").unwrap();
 
         // Create a file
