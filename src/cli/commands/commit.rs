@@ -66,8 +66,12 @@ pub fn execute(args: CommitArgs) -> Result<()> {
     // Execute the commit pipeline
     let result = pipeline.execute(&message, &final_summary)?;
 
+    if result.git_commit_created {
+        println!("Created git commit:    {}", &result.git_hash[..7]);
+    } else {
+        println!("Linked to git commit:  {}", &result.git_hash[..7]);
+    }
     println!("Created neural commit: {}", &result.neural_hash[..7]);
-    println!("Linked to git commit:  {}", &result.git_hash[..7]);
     println!();
     println!("Summary: {}", final_summary);
 
