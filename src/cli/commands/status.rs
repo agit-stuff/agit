@@ -32,6 +32,13 @@ pub fn execute(args: StatusArgs) -> Result<()> {
     let index_store = FileIndexStore::new(&agit_dir);
     let pending_count = index_store.count()?;
 
+    // Get staged context count
+    let staged_count = if index_store.has_staged()? {
+        index_store.read_staged()?.len()
+    } else {
+        0
+    };
+
     // Get latest neural commit
     let ref_store = FileRefStore::new(&agit_dir);
     let latest_hash = ref_store.get(&agit_branch)?;
@@ -45,11 +52,16 @@ pub fn execute(args: StatusArgs) -> Result<()> {
 
     println!();
 
+    if staged_count > 0 {
+        println!("Staged context: {} thought(s) ready for commit", staged_count);
+        println!("  (use \"agit commit\" to create commit)");
+    }
+
     if pending_count > 0 {
         println!("Pending thoughts: {}", pending_count);
-        println!("  (use \"agit commit\" to save context)");
-    } else {
-        println!("No pending thoughts in staging area.");
+        println!("  (will be included in next \"agit add\")");
+    } else if staged_count == 0 {
+        println!("No pending thoughts.");
         println!("  (use \"agit record\" to add thoughts)");
     }
 
