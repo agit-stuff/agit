@@ -1,0 +1,34 @@
+//! AGIT CLI entry point.
+
+use clap::Parser;
+use tracing_subscriber::{fmt, prelude::*, EnvFilter};
+
+use agit::cli::{Cli, Commands};
+use agit::error::Result;
+
+fn main() {
+    // Initialize tracing
+    tracing_subscriber::registry()
+        .with(fmt::layer())
+        .with(EnvFilter::from_default_env())
+        .init();
+
+    if let Err(e) = run() {
+        eprintln!("error: {}", e);
+        std::process::exit(1);
+    }
+}
+
+fn run() -> Result<()> {
+    let cli = Cli::parse();
+
+    match cli.command {
+        Commands::Init(args) => agit::cli::commands::init::execute(args),
+        Commands::Record(args) => agit::cli::commands::record::execute(args),
+        Commands::Status(args) => agit::cli::commands::status::execute(args),
+        Commands::Log(args) => agit::cli::commands::log::execute(args),
+        Commands::Show(args) => agit::cli::commands::show::execute(args),
+        Commands::Commit(args) => agit::cli::commands::commit::execute(args),
+        Commands::Server(args) => agit::cli::commands::server::execute(args),
+    }
+}
