@@ -51,6 +51,17 @@ directories = "5"
 # MCP Protocol (JSON-RPC)
 async-trait = "0.1"
 
+# TUI Framework
+ratatui = "0.26"
+crossterm = { version = "0.27", features = ["event-stream"] }
+tui-input = "0.8"
+
+# Configuration (for TUI settings)
+toml = "0.8"
+
+# Syntax highlighting (optional, for diff viewer)
+syntect = { version = "5", optional = true }
+
 [dev-dependencies]
 # Testing
 assert_cmd = "2"
@@ -62,8 +73,9 @@ test-case = "3"
 insta = "1"
 
 [features]
-default = []
+default = ["syntax-highlighting"]
 semantic-diff = []
+syntax-highlighting = ["syntect"]
 
 [[bin]]
 name = "agit"

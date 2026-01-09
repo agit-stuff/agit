@@ -30,3 +30,15 @@ Thumbs.db
 
 # Benchmarks
 /target/criterion/
+
+# AGIT - AI-Native Git Wrapper
+# Local state (not shared)
+.agit/config.json
+.agit/HEAD
+.agit/index
+.agit/LOCK
+.agit/tmp/
+
+# Shared data (tracked)
+!/.agit/objects/
+!/.agit/refs/

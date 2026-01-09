@@ -3,9 +3,9 @@
 //! This module contains the main algorithms and pipelines,
 //! separated from I/O concerns for better testability.
 
-mod branch_sync;
-mod commit_pipeline;
-mod synthesizer;
+pub mod branch_sync;
+pub mod commit_pipeline;
+pub mod synthesizer;
 
 pub use branch_sync::*;
 pub use commit_pipeline::*;

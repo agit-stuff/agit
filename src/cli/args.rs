@@ -11,9 +11,9 @@ use clap::{Parser, Subcommand};
 #[command(author, version, about, long_about = None)]
 #[command(propagate_version = true)]
 pub struct Cli {
-    /// The command to execute
+    /// The command to execute (if not specified, launches TUI)
     #[command(subcommand)]
-    pub command: Commands,
+    pub command: Option<Commands>,
 }
 
 /// Available AGIT commands

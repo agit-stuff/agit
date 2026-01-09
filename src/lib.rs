@@ -37,6 +37,7 @@ pub mod mcp;
 pub mod safety;
 pub mod storage;
 pub mod templates;
+pub mod tui;
 
 // Re-export commonly used types
 pub use domain::{Category, IndexEntry, NeuralCommit, Role};
