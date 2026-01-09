@@ -53,7 +53,10 @@ pub fn execute(args: StatusArgs) -> Result<()> {
     println!();
 
     if staged_count > 0 {
-        println!("Staged context: {} thought(s) ready for commit", staged_count);
+        println!(
+            "Staged context: {} thought(s) ready for commit",
+            staged_count
+        );
         println!("  (use \"agit commit\" to create commit)");
     }
 
