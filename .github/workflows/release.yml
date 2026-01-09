@@ -37,6 +37,23 @@ jobs:
 
             ### Installation
 
+            **macOS (Homebrew):**
+            ```bash
+            brew tap agit-stuff/agit
+            brew install agit
+            ```
+
+            **Windows (Scoop):**
+            ```powershell
+            scoop bucket add agit https://github.com/agit-stuff/agit
+            scoop install agit
+            ```
+
+            **Linux / macOS / CI:**
+            ```bash
+            curl -fsSL https://raw.githubusercontent.com/agit-stuff/agit/main/install.sh | bash
+            ```
+
             **Cargo:**
             ```bash
             cargo install agit
@@ -159,6 +176,111 @@ jobs:
           asset_path: ./${{ matrix.name }}.zip.sha256
           asset_name: ${{ matrix.name }}.zip.sha256
           asset_content_type: text/plain
+
+  # Upload artifacts for checksum consolidation
+  upload-checksums:
+    name: Upload Checksums
+    needs: build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            name: agit-linux-x86_64
+            ext: tar.gz
+          - os: ubuntu-latest
+            name: agit-linux-x86_64-musl
+            ext: tar.gz
+          - os: ubuntu-latest
+            name: agit-linux-aarch64
+            ext: tar.gz
+          - os: macos-latest
+            name: agit-macos-x86_64
+            ext: tar.gz
+          - os: macos-latest
+            name: agit-macos-aarch64
+            ext: tar.gz
+          - os: windows-latest
+            name: agit-windows-x86_64
+            ext: zip
+    steps:
+      - name: Download checksum from release
+        run: |
+          curl -fsSL -o checksum.txt "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ matrix.name }}.${{ matrix.ext }}.sha256"
+
+      - name: Upload checksum artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: checksum-${{ matrix.name }}
+          path: checksum.txt
+
+  # Consolidate all checksums and update package manifests
+  update-manifests:
+    name: Update Package Manifests
+    needs: [create-release, upload-checksums]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Download all checksum artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: checksums
+          pattern: checksum-*
+
+      - name: Consolidate checksums
+        run: |
+          echo "# AGIT ${{ needs.create-release.outputs.version }} Checksums" > checksums.txt
+          echo "" >> checksums.txt
+          for dir in checksums/checksum-*/; do
+            name=$(basename "$dir" | sed 's/checksum-//')
+            hash=$(cut -d' ' -f1 < "$dir/checksum.txt")
+            echo "$hash  $name" >> checksums.txt
+          done
+          cat checksums.txt
+
+      - name: Upload consolidated checksums
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ./checksums.txt
+          asset_name: checksums.txt
+          asset_content_type: text/plain
+
+      - name: Update Scoop manifest
+        run: |
+          VERSION="${{ needs.create-release.outputs.version }}"
+          HASH=$(grep "agit-windows-x86_64" checksums.txt | cut -d' ' -f1)
+
+          # Update version and hash in scoop manifest
+          jq --arg version "$VERSION" --arg hash "sha256:$HASH" \
+            '.version = $version | .architecture."64bit".hash = $hash | .architecture."64bit".url = "https://github.com/agit-stuff/agit/releases/download/v\($version)/agit-windows-x86_64.zip"' \
+            scoop/agit.json > scoop/agit.json.tmp
+          mv scoop/agit.json.tmp scoop/agit.json
+
+          cat scoop/agit.json
+
+      - name: Commit manifest updates
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add scoop/agit.json
+          git commit -m "chore: update package manifests for v${{ needs.create-release.outputs.version }}" || echo "No changes to commit"
+          git push
+
+      - name: Trigger Homebrew formula update
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          repository: agit-stuff/homebrew-agit
+          event-type: release
+          client-payload: '{"version": "${{ needs.create-release.outputs.version }}"}'
 
   publish-crates:
     name: Publish to crates.io
