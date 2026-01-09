@@ -12,6 +12,7 @@ use crate::error::{AgitError, IndexError, Result};
 use super::IndexStore;
 
 /// File-based index store.
+#[derive(Clone)]
 pub struct FileIndexStore {
     /// Path to the index file (`.agit/index`).
     index_path: PathBuf,
