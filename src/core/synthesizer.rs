@@ -46,7 +46,7 @@ impl SynthesizeSummary {
         entries
             .iter()
             .filter(|e| e.role == Role::User && e.category == Category::Intent)
-            .last()
+            .next_back()
             .map(|e| Self::truncate_content(&e.content))
     }
 
@@ -55,7 +55,7 @@ impl SynthesizeSummary {
         entries
             .iter()
             .filter(|e| e.role == Role::Ai && e.category == Category::Reasoning)
-            .last()
+            .next_back()
             .map(|e| Self::truncate_content(&e.content))
     }
 

@@ -30,7 +30,7 @@ impl GitRepository {
 
         // Detached HEAD - return the short hash
         if let Some(oid) = head.target() {
-            return Ok(format!("{}", &oid.to_string()[..7]));
+            return Ok(oid.to_string()[..7].to_string());
         }
 
         Ok("unknown".to_string())
