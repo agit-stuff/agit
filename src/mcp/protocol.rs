@@ -208,3 +208,10 @@ pub struct LogStepParams {
 pub struct GetContextParams {
     pub git_hash: String,
 }
+
+/// Parameters for agit_get_recent_summaries tool.
+#[derive(Debug, Deserialize)]
+pub struct GetRecentSummariesParams {
+    /// Number of recent summaries to return (default: 5).
+    pub count: Option<usize>,
+}

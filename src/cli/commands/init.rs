@@ -28,6 +28,7 @@ const GITIGNORE_ENTRIES: &str = r#"
 # MCP configs (shared with team)
 !.mcp.json
 !.cursor/mcp.json
+!.vscode/mcp.json
 "#;
 
 /// Execute the `init` command.
@@ -153,7 +154,7 @@ fn get_agit_command_path() -> String {
         .unwrap_or_else(|| "agit".to_string()) // Fallback to PATH lookup
 }
 
-/// Generate the MCP config JSON content.
+/// Generate the MCP config JSON content for Claude Code and Cursor.
 fn generate_mcp_config(agit_path: &str) -> String {
     // Escape backslashes for JSON on Windows
     let escaped_path = agit_path.replace('\\', "\\\\");
@@ -171,10 +172,30 @@ fn generate_mcp_config(agit_path: &str) -> String {
     )
 }
 
-/// Generate MCP configuration files for Claude Code and Cursor.
+/// Generate the MCP config JSON content for VS Code Copilot.
+/// VS Code uses "servers" key instead of "mcpServers".
+fn generate_vscode_mcp_config(agit_path: &str) -> String {
+    // Escape backslashes for JSON on Windows
+    let escaped_path = agit_path.replace('\\', "\\\\");
+    format!(
+        r#"{{
+  "servers": {{
+    "agit": {{
+      "command": "{}",
+      "args": ["server"]
+    }}
+  }}
+}}
+"#,
+        escaped_path
+    )
+}
+
+/// Generate MCP configuration files for Claude Code, Cursor, and VS Code.
 fn generate_mcp_configs(project_dir: &Path) -> Result<()> {
     let agit_path = get_agit_command_path();
     let mcp_config = generate_mcp_config(&agit_path);
+    let vscode_config = generate_vscode_mcp_config(&agit_path);
 
     // Generate .mcp.json for Claude Code (project root)
     let mcp_json_path = project_dir.join(".mcp.json");
@@ -194,6 +215,17 @@ fn generate_mcp_configs(project_dir: &Path) -> Result<()> {
         println!("  - .cursor/mcp.json (Cursor)");
     } else {
         println!("  - Skipping .cursor/mcp.json (already exists)");
+    }
+
+    // Generate .vscode/mcp.json for VS Code Copilot
+    let vscode_dir = project_dir.join(".vscode");
+    fs::create_dir_all(&vscode_dir)?;
+    let vscode_mcp_path = vscode_dir.join("mcp.json");
+    if !vscode_mcp_path.exists() {
+        fs::write(&vscode_mcp_path, &vscode_config)?;
+        println!("  - .vscode/mcp.json (VS Code Copilot)");
+    } else {
+        println!("  - Skipping .vscode/mcp.json (already exists)");
     }
 
     Ok(())
@@ -307,12 +339,19 @@ mod tests {
 
         assert!(temp.path().join(".mcp.json").exists());
         assert!(temp.path().join(".cursor/mcp.json").exists());
+        assert!(temp.path().join(".vscode/mcp.json").exists());
 
-        // Verify JSON structure
+        // Verify JSON structure for Claude Code/Cursor
         let mcp_content = fs::read_to_string(temp.path().join(".mcp.json")).unwrap();
         assert!(mcp_content.contains("mcpServers"));
         assert!(mcp_content.contains("agit"));
         assert!(mcp_content.contains("server"));
+
+        // Verify VS Code uses "servers" key (not "mcpServers")
+        let vscode_content = fs::read_to_string(temp.path().join(".vscode/mcp.json")).unwrap();
+        assert!(vscode_content.contains("\"servers\""));
+        assert!(!vscode_content.contains("mcpServers"));
+        assert!(vscode_content.contains("agit"));
     }
 
     #[test]

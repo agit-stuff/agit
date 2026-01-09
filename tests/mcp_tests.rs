@@ -134,6 +134,7 @@ fn test_mcp_tools_list() {
     assert!(tool_names.contains(&"agit_log_step"));
     assert!(tool_names.contains(&"agit_read_roadmap"));
     assert!(tool_names.contains(&"agit_get_context"));
+    assert!(tool_names.contains(&"agit_get_recent_summaries"));
 
     // Clean up
     drop(stdin);
