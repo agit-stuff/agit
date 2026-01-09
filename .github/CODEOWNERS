@@ -1,0 +1,25 @@
+# CODEOWNERS - Default code owners for AGIT
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owners for everything in the repo
+* @agit-stuff/maintainers
+
+# Core modules require maintainer review
+/src/core/ @agit-stuff/maintainers
+/src/storage/ @agit-stuff/maintainers
+/src/safety/ @agit-stuff/maintainers
+
+# MCP server
+/src/mcp/ @agit-stuff/maintainers
+
+# CI/CD changes
+/.github/ @agit-stuff/maintainers
+
+# Security-related files
+/SECURITY.md @agit-stuff/security
+/deny.toml @agit-stuff/security
+
+# Documentation
+/docs/ @agit-stuff/docs
+/README.md @agit-stuff/docs
+/CONTRIBUTING.md @agit-stuff/docs
