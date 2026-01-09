@@ -5,7 +5,6 @@
 use std::fs;
 use std::io::{BufRead, BufReader, Write};
 use std::process::{Command, Stdio};
-use std::time::Duration;
 
 use serde_json::{json, Value};
 use tempfile::TempDir;
@@ -16,14 +15,29 @@ use integration::create_test_repo;
 /// Send a JSON-RPC request to the MCP server and get the response.
 fn send_request(stdin: &mut impl Write, stdout: &mut impl BufRead, request: Value) -> Value {
     // Send request
-    writeln!(stdin, "{}", serde_json::to_string(&request).unwrap()).unwrap();
+    let request_str = serde_json::to_string(&request).unwrap();
+    writeln!(stdin, "{}", request_str).unwrap();
     stdin.flush().unwrap();
 
     // Read response
     let mut response_line = String::new();
-    stdout.read_line(&mut response_line).unwrap();
+    let bytes_read = stdout.read_line(&mut response_line).unwrap();
 
-    serde_json::from_str(&response_line).unwrap()
+    if bytes_read == 0 || response_line.trim().is_empty() {
+        panic!(
+            "Empty response from server for request: {}",
+            request_str
+        );
+    }
+
+    serde_json::from_str(&response_line).unwrap_or_else(|e| {
+        panic!(
+            "Failed to parse response '{}' for request '{}': {}",
+            response_line.trim(),
+            request_str,
+            e
+        );
+    })
 }
 
 fn setup_mcp_test() -> (TempDir, std::process::Child) {
@@ -289,10 +303,23 @@ fn test_mcp_unknown_method() {
     let stdout = child.stdout.take().unwrap();
     let mut reader = BufReader::new(stdout);
 
+    // Initialize first (required for proper MCP protocol)
+    let init_request = json!({
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "initialize",
+        "params": {
+            "protocolVersion": "2024-11-05",
+            "capabilities": {},
+            "clientInfo": { "name": "test", "version": "1.0" }
+        }
+    });
+    send_request(&mut stdin, &mut reader, init_request);
+
     // Call unknown method
     let request = json!({
         "jsonrpc": "2.0",
-        "id": 1,
+        "id": 2,
         "method": "unknown/method"
     });
 

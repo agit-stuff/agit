@@ -3,7 +3,6 @@
 //! These tests verify the end-to-end behavior of the CLI commands.
 
 use std::fs;
-use std::path::Path;
 use std::process::Command;
 
 use assert_cmd::prelude::*;
@@ -52,9 +51,9 @@ fn create_test_repo() -> TempDir {
     temp
 }
 
-/// Get the path to the agit binary.
+/// Get a command for the agit binary.
 fn agit_cmd() -> Command {
-    Command::cargo_bin("agit").unwrap()
+    Command::new(env!("CARGO_BIN_EXE_agit"))
 }
 
 #[test]

@@ -3,7 +3,6 @@
 //! This module provides shared test helpers and fixtures.
 
 use std::fs;
-use std::path::Path;
 use std::process::Command;
 
 use tempfile::TempDir;
@@ -48,16 +47,4 @@ pub fn create_test_repo() -> TempDir {
         .expect("Failed to create initial commit");
 
     temp
-}
-
-/// Initialize AGIT in a test repository.
-pub fn init_agit(repo_path: &Path) {
-    use assert_cmd::Command;
-
-    Command::cargo_bin("agit")
-        .unwrap()
-        .arg("init")
-        .current_dir(repo_path)
-        .assert()
-        .success();
 }
