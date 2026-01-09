@@ -2,13 +2,13 @@
   <img src="assets/agit-logo-text.svg" alt="AGIT Logo" width="200">
 </p>
 
-# AGIT - AI-Native Git Wrapper
+# agit - AI-Native Git Wrapper
 
 > "Code is the Artifact. Context is the Source."
 
 **[Documentation](https://agit-stuff.github.io/) · [GitHub](https://github.com/agit-stuff/agit)**
 
-AGIT captures the **reasoning context** (Why/How) alongside your **code changes** (What). It creates a "Neural Graph" parallel to Git's commit graph, giving you and your team a complete history of not just what changed, but *why* it changed and *how* the decision was made.
+agit captures the **reasoning context** (Why/How) alongside your **code changes** (What). It creates a "Neural Graph" parallel to Git's commit graph, giving you and your team a complete history of not just what changed, but *why* it changed and *how* the decision was made.
 
 ## Features
 
@@ -68,14 +68,14 @@ agit log
 
 ### The "Seamless Echo" Strategy
 
-AGIT inverts the traditional approach. Instead of the CLI calling LLMs, your **AI editor** (Cursor, Claude, etc.) pushes context to AGIT via MCP:
+agit inverts the traditional approach. Instead of the CLI calling LLMs, your **AI editor** (Cursor, Claude, etc.) pushes context to agit via MCP:
 
 1. **User asks:** "Fix the auth bug"
 2. **AI logs intent:** `agit_log_step(role="user", content="Fix auth bug")`
 3. **AI plans:** "I'll add a try/catch block"
 4. **AI logs plan:** `agit_log_step(role="ai", content="Plan: Add try/catch")`
 5. **User commits:** `agit commit -m "Fix auth bug"`
-6. **AGIT synthesizes:** Links the Intent + Plan to the git commit
+6. **agit synthesizes:** Links the Intent + Plan to the git commit
 
 ### What Gets Created
 
@@ -94,13 +94,13 @@ your-project/
 └── .cursorrules        # AI instructions (appended if exists)
 ```
 
-**Note:** If you already have `CLAUDE.md` or `.cursorrules` files, AGIT appends its policy rather than overwriting your content.
+**Note:** If you already have `CLAUDE.md` or `.cursorrules` files, agit appends its policy rather than overwriting your content.
 
 ## Commands
 
 | Command | Description |
 |---------|-------------|
-| `agit init` | Initialize AGIT in a git repository |
+| `agit init` | Initialize agit in a git repository |
 | `agit record <msg>` | Manually record a thought |
 | `agit add [path]` | Stage files and freeze context for commit |
 | `agit status` | Show current status and pending thoughts |
@@ -111,7 +111,7 @@ your-project/
 
 ## Philosophy
 
-Traditional version control captures the **what** (code changes) but loses the **why** (reasoning). AGIT fills this gap by:
+Traditional version control captures the **what** (code changes) but loses the **why** (reasoning). agit fills this gap by:
 
 1. **Capturing Intent** - What the user wanted to achieve
 2. **Recording Reasoning** - How the AI (or human) decided to approach it
@@ -138,7 +138,7 @@ This creates a "dual graph" where:
                       │ MCP (agit_log_step)
                       ▼
 ┌─────────────────────────────────────────────────────────┐
-│                    AGIT MCP Server                      │
+│                    agit MCP Server                      │
 │  ┌─────────────────────────────────────────────────┐   │
 │  │  Receives: role, category, content              │   │
 │  │  Appends to: .agit/index                        │   │
