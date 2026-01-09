@@ -58,6 +58,14 @@ pub enum AgitError {
     #[error("JSON error: {0}")]
     Json(#[from] serde_json::Error),
 
+    /// Tantivy search error.
+    #[error("Search error: {0}")]
+    Search(#[from] tantivy::TantivyError),
+
+    /// Tantivy query parser error.
+    #[error("Query parse error: {0}")]
+    QueryParse(#[from] tantivy::query::QueryParserError),
+
     /// Invalid command arguments.
     #[error("Invalid argument: {0}")]
     InvalidArgument(String),
