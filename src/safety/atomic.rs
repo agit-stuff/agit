@@ -5,13 +5,13 @@
 //! 2. Flush and sync to disk
 //! 3. Atomically rename to the target path
 
-use std::fs::{self, File};
+use std::fs;
 use std::io::Write;
 use std::path::Path;
 
 use tempfile::NamedTempFile;
 
-use crate::error::Result;
+use crate::error::{AgitError, Result};
 
 /// Atomically write content to a file.
 ///
@@ -50,7 +50,7 @@ pub fn atomic_write(path: &Path, content: &[u8]) -> Result<()> {
     temp_file.as_file().sync_all()?;
 
     // Atomically rename to target path
-    temp_file.persist(path)?;
+    temp_file.persist(path).map_err(|e| AgitError::Io(e.error))?;
 
     Ok(())
 }
