@@ -20,6 +20,7 @@ pub struct McpServer {
     /// Path to the .agit directory.
     agit_dir: PathBuf,
     /// Whether verbose logging is enabled.
+    #[allow(dead_code)]
     verbose: bool,
 }
 
