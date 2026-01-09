@@ -34,5 +34,6 @@ fn run() -> Result<()> {
         Commands::Pull(args) => agit::cli::commands::pull::execute(args),
         Commands::Migrate(args) => agit::cli::commands::migrate::execute(args),
         Commands::Server(args) => agit::cli::commands::server::execute(args),
+        Commands::Search(args) => agit::cli::commands::search::execute(args),
     }
 }
