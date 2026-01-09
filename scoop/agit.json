@@ -10,7 +10,7 @@
     "architecture": {
         "64bit": {
             "url": "https://github.com/agit-stuff/agit/releases/download/v0.1.0/agit-windows-x86_64.zip",
-            "hash": "sha256:PLACEHOLDER_HASH_TO_BE_UPDATED_BY_CI"
+            "hash": "8c52774ea1953598a95b821a54f683cac3e811beb6e3269d128fc5386d9763bb"
         }
     },
     "bin": "agit.exe",
