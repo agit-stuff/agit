@@ -117,9 +117,9 @@ impl GitRepository {
         let parent = self.repo.head()?.peel_to_commit()?;
 
         // Create the commit
-        let commit_id =
-            self.repo
-                .commit(Some("HEAD"), &sig, &sig, message, &tree, &[&parent])?;
+        let commit_id = self
+            .repo
+            .commit(Some("HEAD"), &sig, &sig, message, &tree, &[&parent])?;
 
         Ok(commit_id.to_string())
     }
