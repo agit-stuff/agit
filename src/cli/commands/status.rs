@@ -1,11 +1,13 @@
 //! Implementation of the `agit status` command.
 
+use git2::Repository;
+
 use crate::cli::args::StatusArgs;
-use crate::core::{ensure_sync, EnsureSyncResult};
+use crate::core::{detect_version, ensure_sync, EnsureSyncResult, StorageVersion};
 use crate::error::{AgitError, Result};
 use crate::git::GitRepository;
 use crate::storage::{
-    FileHeadStore, FileIndexStore, FileRefStore, HeadStore, IndexStore, RefStore,
+    FileHeadStore, FileIndexStore, FileRefStore, GitRefStore, HeadStore, IndexStore, RefStore,
 };
 
 /// Execute the `status` command.
@@ -53,9 +55,19 @@ pub fn execute(args: StatusArgs) -> Result<()> {
         0
     };
 
-    // Get latest neural commit
-    let ref_store = FileRefStore::new(&agit_dir);
-    let latest_hash = ref_store.get(&agit_branch)?;
+    // Detect storage version and get latest neural commit
+    let version = {
+        let repo = Repository::discover(&cwd)?;
+        detect_version(&agit_dir, &repo)
+    };
+
+    let latest_hash: Option<String> = if matches!(version, StorageVersion::V2GitNative) {
+        let ref_store = GitRefStore::new(&cwd);
+        ref_store.get(&agit_branch)?
+    } else {
+        let ref_store = FileRefStore::new(&agit_dir);
+        ref_store.get(&agit_branch)?
+    };
 
     // Print status
     println!("On branch {}", git_branch);

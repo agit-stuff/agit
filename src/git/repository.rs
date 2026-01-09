@@ -18,6 +18,18 @@ impl GitRepository {
         Ok(Self { repo })
     }
 
+    /// Get the path to the repository working directory.
+    ///
+    /// This is the root directory containing `.git/`.
+    pub fn workdir(&self) -> Option<&Path> {
+        self.repo.workdir()
+    }
+
+    /// Get the path to the `.git` directory.
+    pub fn git_dir(&self) -> &Path {
+        self.repo.path()
+    }
+
     /// Get the current branch name.
     pub fn current_branch(&self) -> Result<String> {
         let head = self.repo.head()?;

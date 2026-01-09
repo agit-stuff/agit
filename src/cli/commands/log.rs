@@ -1,11 +1,14 @@
 //! Implementation of the `agit log` command.
 
+use git2::Repository;
+
 use crate::cli::args::LogArgs;
-use crate::core::{ensure_sync, EnsureSyncResult};
+use crate::core::{detect_version, ensure_sync, EnsureSyncResult, StorageVersion};
 use crate::domain::{NeuralCommit, ObjectType, WrappedNeuralCommit};
 use crate::error::{AgitError, Result};
 use crate::storage::{
-    FileHeadStore, FileObjectStore, FileRefStore, HeadStore, ObjectStore, RefStore,
+    FileHeadStore, FileObjectStore, FileRefStore, GitObjectStore, GitRefStore, HeadStore,
+    ObjectStore, RefStore,
 };
 
 /// Execute the `log` command.
@@ -35,17 +38,28 @@ pub fn execute(args: LogArgs) -> Result<()> {
     let head_store = FileHeadStore::new(&agit_dir);
     let branch = head_store.get()?.unwrap_or_else(|| "main".to_string());
 
-    // Get latest commit hash
-    let ref_store = FileRefStore::new(&agit_dir);
-    let mut current_hash = ref_store.get(&branch)?;
+    // Detect storage version
+    let version = {
+        let repo = Repository::discover(&cwd)?;
+        detect_version(&agit_dir, &repo)
+    };
+    let is_v2 = matches!(version, StorageVersion::V2GitNative);
+
+    // Get latest commit hash using appropriate ref store
+    let mut current_hash: Option<String> = if is_v2 {
+        let ref_store = GitRefStore::new(&cwd);
+        ref_store.get(&branch)?
+    } else {
+        let ref_store = FileRefStore::new(&agit_dir);
+        ref_store.get(&branch)?
+    };
 
     if current_hash.is_none() {
         println!("No neural commits yet on branch '{}'.", branch);
         return Ok(());
     }
 
-    // Walk the commit chain
-    let object_store = FileObjectStore::new(&agit_dir);
+    // Walk the commit chain using appropriate object store
     let mut count = 0;
 
     while let Some(hash) = current_hash {
@@ -53,8 +67,14 @@ pub fn execute(args: LogArgs) -> Result<()> {
             break;
         }
 
-        // Load the commit
-        let data = object_store.load(&hash)?;
+        // Load the commit using appropriate store
+        let data = if is_v2 {
+            let object_store = GitObjectStore::new(&cwd);
+            object_store.load(&hash)?
+        } else {
+            let object_store = FileObjectStore::new(&agit_dir);
+            object_store.load(&hash)?
+        };
         let wrapped: WrappedNeuralCommit = serde_json::from_slice(&data)?;
 
         if wrapped.object_type != ObjectType::NeuralCommit {

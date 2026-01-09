@@ -40,6 +40,15 @@ pub enum Commands {
     /// Stage files and freeze context for commit
     Add(AddArgs),
 
+    /// Push agit refs to a remote repository
+    Push(PushArgs),
+
+    /// Pull agit refs from a remote repository
+    Pull(PullArgs),
+
+    /// Migrate storage from V1 (file-based) to V2 (Git-native)
+    Migrate(MigrateArgs),
+
     /// Start the MCP server
     Server(ServerArgs),
 }
@@ -148,4 +157,36 @@ pub struct AddArgs {
     /// Files or patterns to add (e.g., ".", "src/")
     #[arg(default_value = ".")]
     pub pathspec: Vec<String>,
+}
+
+/// Arguments for the `push` command
+#[derive(Parser, Debug)]
+pub struct PushArgs {
+    /// Remote name (default: origin)
+    #[arg(default_value = "origin")]
+    pub remote: String,
+
+    /// Force push (overwrite remote refs)
+    #[arg(short, long)]
+    pub force: bool,
+}
+
+/// Arguments for the `pull` command
+#[derive(Parser, Debug)]
+pub struct PullArgs {
+    /// Remote name (default: origin)
+    #[arg(default_value = "origin")]
+    pub remote: String,
+}
+
+/// Arguments for the `migrate` command
+#[derive(Parser, Debug)]
+pub struct MigrateArgs {
+    /// Clean up old storage after migration
+    #[arg(long)]
+    pub cleanup: bool,
+
+    /// Force migration even if already on V2
+    #[arg(short, long)]
+    pub force: bool,
 }
