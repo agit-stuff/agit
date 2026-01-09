@@ -1,0 +1,80 @@
+[package]
+name = "agit"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+license = "MIT OR Apache-2.0"
+description = "AI-native Git wrapper for capturing context alongside code"
+repository = "https://github.com/agit-stuff/agit"
+documentation = "https://docs.rs/agit"
+readme = "README.md"
+keywords = ["git", "ai", "mcp", "developer-tools", "context"]
+categories = ["development-tools", "command-line-utilities"]
+authors = ["AGIT Contributors"]
+
+[dependencies]
+# CLI
+clap = { version = "4", features = ["derive", "env", "wrap_help"] }
+
+# Git
+git2 = "0.19"
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Async
+tokio = { version = "1", features = ["full"] }
+
+# Error handling
+thiserror = "2"
+anyhow = "1"
+
+# Filesystem
+tempfile = "3"
+fs2 = "0.4"
+
+# Hashing
+sha2 = "0.10"
+hex = "0.4"
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Logging & Tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# Configuration
+directories = "5"
+
+[dev-dependencies]
+# Testing
+assert_cmd = "2"
+predicates = "3"
+proptest = "1"
+criterion = "0.5"
+mockall = "0.13"
+test-case = "3"
+insta = "1"
+
+[features]
+default = []
+semantic-diff = []
+
+[[bin]]
+name = "agit"
+path = "src/main.rs"
+
+[lib]
+name = "agit"
+path = "src/lib.rs"
+
+[[bench]]
+name = "benchmarks"
+harness = false
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
