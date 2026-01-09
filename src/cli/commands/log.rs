@@ -1,6 +1,7 @@
 //! Implementation of the `agit log` command.
 
 use crate::cli::args::LogArgs;
+use crate::core::{ensure_sync, EnsureSyncResult};
 use crate::domain::{NeuralCommit, ObjectType, WrappedNeuralCommit};
 use crate::error::{AgitError, Result};
 use crate::storage::{
@@ -15,6 +16,19 @@ pub fn execute(args: LogArgs) -> Result<()> {
     // Check if initialized
     if !agit_dir.exists() {
         return Err(AgitError::NotInitialized);
+    }
+
+    // Ensure branch sync
+    if let Some(result) = ensure_sync(&cwd, &agit_dir)? {
+        match &result {
+            EnsureSyncResult::ForkedToNew { new_branch, .. } => {
+                println!("Syncing Agit memory to new branch: '{}'", new_branch);
+            }
+            EnsureSyncResult::SwitchedToExisting { new_branch, .. } => {
+                println!("Syncing Agit memory to branch: '{}'", new_branch);
+            }
+            _ => {}
+        }
     }
 
     // Get current branch
@@ -55,7 +69,8 @@ pub fn execute(args: LogArgs) -> Result<()> {
             print_full(&commit);
         }
 
-        current_hash = commit.parent_hash;
+        // Use first_parent() to walk the main line (handles both old and new format)
+        current_hash = commit.first_parent().map(|s| s.to_string());
         count += 1;
     }
 
@@ -72,6 +87,17 @@ fn print_oneline(commit: &NeuralCommit) {
 /// Print a commit in full format.
 fn print_full(commit: &NeuralCommit) {
     println!("commit {} (git: {})", commit.short_hash(), commit.git_hash);
+
+    // Show merge information if this is a merge commit
+    if commit.is_merge() {
+        let parents: Vec<&str> = commit
+            .parents()
+            .iter()
+            .map(|p| if p.len() >= 7 { &p[..7] } else { *p })
+            .collect();
+        println!("Merge:  {}", parents.join(" "));
+    }
+
     println!("Author: {}", commit.author);
     println!(
         "Date:   {}",
