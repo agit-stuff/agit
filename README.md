@@ -54,9 +54,9 @@ agit init
 # Or manually record thoughts:
 agit record "Planning to refactor the auth module"
 
-# After making changes, commit with context:
+# After making changes, stage and commit with context (one command!):
 git add .
-agit commit -m "Refactor auth module"
+agit commit -m "Refactor auth module"  # Creates both git + neural commit
 
 # View history with context:
 agit log
@@ -97,7 +97,7 @@ your-project/
 | `agit init` | Initialize AGIT in a git repository |
 | `agit record <msg>` | Manually record a thought |
 | `agit status` | Show current status and pending thoughts |
-| `agit commit -m <msg>` | Create a commit with linked context |
+| `agit commit -m <msg>` | Create git commit + neural commit with context |
 | `agit log` | View commit history with summaries |
 | `agit show [hash]` | Show full context for a commit |
 | `agit server` | Start the MCP server |
@@ -145,8 +145,8 @@ This creates a "dual graph" where:
 │  │  1. Read .agit/index                            │   │
 │  │  2. Synthesize summary (Intent + Plan)          │   │
 │  │  3. Create trace blob                           │   │
-│  │  4. Create NeuralCommit                         │   │
-│  │  5. Link to git commit                          │   │
+│  │  4. Create git commit (from staged changes)     │   │
+│  │  5. Create NeuralCommit (linked to git commit)  │   │
 │  │  6. Update refs                                 │   │
 │  └─────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────┘
