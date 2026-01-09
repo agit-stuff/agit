@@ -43,6 +43,7 @@ pub fn execute(args: CommitArgs) -> Result<()> {
     let head_store = FileHeadStore::new(&agit_dir);
 
     let mut pipeline = CommitPipeline::new(
+        agit_dir,
         git_repo,
         object_store,
         ref_store,

@@ -1,22 +1,27 @@
 //! Commit pipeline implementation.
 //!
 //! Orchestrates the full commit workflow:
-//! 1. Read index entries
-//! 2. Create trace blob
-//! 3. Create/get roadmap blob
-//! 4. Execute git commit
-//! 5. Create neural commit
-//! 6. Update refs
-//! 7. Clear index
+//! 1. Acquire lock
+//! 2. Read index entries
+//! 3. Create trace blob
+//! 4. Create/get roadmap blob
+//! 5. Get git commit hash
+//! 6. Create neural commit
+//! 7. Update refs
+//! 8. Clear index
+//! 9. Release lock (automatic on drop)
 
+use std::path::PathBuf;
+
+use crate::core::SynthesizeSummary;
 use crate::domain::{BlobContent, NeuralCommit, WrappedBlob, WrappedNeuralCommit};
 use crate::error::Result;
 use crate::git::GitRepository;
+use crate::safety::{lock_path, LockGuard};
 use crate::storage::{
-    FileHeadStore, FileIndexStore, FileObjectStore, FileRefStore,
-    HeadStore, IndexStore, ObjectStore, RefStore,
+    FileHeadStore, FileIndexStore, FileObjectStore, FileRefStore, HeadStore, IndexStore,
+    ObjectStore, RefStore,
 };
-use crate::core::SynthesizeSummary;
 
 /// Result of a successful commit.
 pub struct CommitResult {
@@ -28,6 +33,7 @@ pub struct CommitResult {
 
 /// The commit pipeline orchestrates the full commit workflow.
 pub struct CommitPipeline {
+    agit_dir: PathBuf,
     git: GitRepository,
     objects: FileObjectStore,
     refs: FileRefStore,
@@ -38,6 +44,7 @@ pub struct CommitPipeline {
 impl CommitPipeline {
     /// Create a new commit pipeline.
     pub fn new(
+        agit_dir: PathBuf,
         git: GitRepository,
         objects: FileObjectStore,
         refs: FileRefStore,
@@ -45,6 +52,7 @@ impl CommitPipeline {
         index: FileIndexStore,
     ) -> Self {
         Self {
+            agit_dir,
             git,
             objects,
             refs,
@@ -59,8 +67,11 @@ impl CommitPipeline {
     ///
     /// * `message` - The git commit message
     /// * `summary` - The synthesized summary for the neural commit
-    pub fn execute(&mut self, message: &str, summary: &str) -> Result<CommitResult> {
-        // 1. Read index entries
+    pub fn execute(&mut self, _message: &str, summary: &str) -> Result<CommitResult> {
+        // 1. Acquire exclusive lock
+        let _lock = LockGuard::acquire(&lock_path(&self.agit_dir))?;
+
+        // 2. Read index entries
         let entries = self.index.read_all()?;
 
         // 2. Create trace blob
