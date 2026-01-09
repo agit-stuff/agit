@@ -56,8 +56,8 @@ agit init
 # Or manually record thoughts:
 agit record "Planning to refactor the auth module"
 
-# After making changes, stage and commit with context (one command!):
-git add .
+# After making changes, stage and commit with context:
+agit add .
 agit commit -m "Refactor auth module"  # Creates both git + neural commit
 
 # View history with context:
@@ -98,6 +98,7 @@ your-project/
 |---------|-------------|
 | `agit init` | Initialize AGIT in a git repository |
 | `agit record <msg>` | Manually record a thought |
+| `agit add [path]` | Stage files and freeze context for commit |
 | `agit status` | Show current status and pending thoughts |
 | `agit commit -m <msg>` | Create git commit + neural commit with context |
 | `agit log` | View commit history with summaries |
