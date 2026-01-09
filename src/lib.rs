@@ -33,6 +33,7 @@ pub mod core;
 pub mod domain;
 pub mod error;
 pub mod git;
+pub mod mcp;
 pub mod safety;
 pub mod storage;
 pub mod templates;

@@ -5,6 +5,7 @@
 
 use crate::cli::args::ServerArgs;
 use crate::error::{AgitError, Result};
+use crate::mcp::McpServer;
 
 /// Execute the `server` command.
 pub fn execute(args: ServerArgs) -> Result<()> {
@@ -19,20 +20,24 @@ pub fn execute(args: ServerArgs) -> Result<()> {
     if args.verbose {
         eprintln!("Starting AGIT MCP server...");
         eprintln!("Project: {}", cwd.display());
+        eprintln!("Listening on stdio for JSON-RPC requests...");
     }
 
-    // Run the MCP server
-    // For now, this is a placeholder - the full implementation
-    // will use tokio and jsonrpc-core for the stdio transport
+    // Initialize tracing if verbose
+    if args.verbose {
+        use tracing_subscriber::EnvFilter;
+        tracing_subscriber::fmt()
+            .with_env_filter(
+                EnvFilter::try_from_default_env()
+                    .unwrap_or_else(|_| EnvFilter::new("agit=debug")),
+            )
+            .with_writer(std::io::stderr)
+            .init();
+    }
 
-    // TODO: Implement full MCP server
-    // The server should:
-    // 1. Listen on stdin for JSON-RPC requests
-    // 2. Handle tool calls (agit_log_step, agit_read_roadmap, etc.)
-    // 3. Write responses to stdout
-
-    eprintln!("MCP server is not yet fully implemented.");
-    eprintln!("For now, use 'agit record' to manually log thoughts.");
+    // Create and run the MCP server
+    let server = McpServer::new(cwd, args.verbose);
+    server.run()?;
 
     Ok(())
 }
