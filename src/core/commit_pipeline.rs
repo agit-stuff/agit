@@ -74,8 +74,12 @@ impl CommitPipeline {
         // 1. Acquire exclusive lock
         let _lock = LockGuard::acquire(&lock_path(&self.agit_dir))?;
 
-        // 2. Read index entries
-        let entries = self.index.read_all()?;
+        // 2. Read index entries (from staged-index if exists, otherwise from index)
+        let entries = if self.index.has_staged()? {
+            self.index.read_staged()?
+        } else {
+            self.index.read_all()?
+        };
 
         // 2. Create trace blob
         let trace_content = SynthesizeSummary::format_trace(&entries);
@@ -122,8 +126,12 @@ impl CommitPipeline {
         // 9. Update branch ref
         self.refs.update(&branch, &neural_hash)?;
 
-        // 10. Clear index
-        self.index.clear()?;
+        // 10. Clear index (staged-index if exists, otherwise regular index)
+        if self.index.has_staged()? {
+            self.index.clear_staged()?;
+        } else {
+            self.index.clear()?;
+        }
 
         Ok(CommitResult {
             neural_hash,
