@@ -50,6 +50,50 @@ impl std::fmt::Display for Category {
     }
 }
 
+/// A code location representing a file and optional line range.
+///
+/// Captures where in the codebase a thought/reasoning applies.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Location {
+    /// Relative file path from repository root.
+    pub file: String,
+    /// Starting line number (1-indexed).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub start_line: Option<u32>,
+    /// Ending line number (inclusive). Defaults to start_line if not specified.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub end_line: Option<u32>,
+}
+
+impl Location {
+    /// Create a new location for a file without line numbers.
+    pub fn file(path: impl Into<String>) -> Self {
+        Self {
+            file: path.into(),
+            start_line: None,
+            end_line: None,
+        }
+    }
+
+    /// Create a new location for a specific line.
+    pub fn line(path: impl Into<String>, line: u32) -> Self {
+        Self {
+            file: path.into(),
+            start_line: Some(line),
+            end_line: None,
+        }
+    }
+
+    /// Create a new location for a line range.
+    pub fn range(path: impl Into<String>, start: u32, end: u32) -> Self {
+        Self {
+            file: path.into(),
+            start_line: Some(start),
+            end_line: Some(end),
+        }
+    }
+}
+
 /// A single entry in the AGIT index (staging area).
 ///
 /// Index entries are stored as JSONL (JSON Lines) in `.agit/index`.
@@ -65,10 +109,15 @@ pub struct IndexEntry {
     /// When this entry was created.
     #[serde(with = "chrono::serde::ts_seconds")]
     pub timestamp: DateTime<Utc>,
-    /// Optional file path this entry relates to.
+    /// Code locations this entry relates to.
+    /// Supports multiple files and line ranges.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub locations: Option<Vec<Location>>,
+    // --- Legacy fields for backward compatibility ---
+    /// (Deprecated) Use `locations` instead. Optional file path.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub file_path: Option<String>,
-    /// Optional line number in the file.
+    /// (Deprecated) Use `locations` instead. Optional line number.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub line_number: Option<u32>,
 }
@@ -81,12 +130,14 @@ impl IndexEntry {
             category,
             content: content.into(),
             timestamp: Utc::now(),
+            locations: None,
             file_path: None,
             line_number: None,
         }
     }
 
-    /// Create a new index entry with file/line location.
+    /// Create a new index entry with file/line location (legacy API).
+    /// Prefer `with_locations()` for new code.
     pub fn with_location(
         role: Role,
         category: Category,
@@ -99,8 +150,50 @@ impl IndexEntry {
             category,
             content: content.into(),
             timestamp: Utc::now(),
+            locations: None,
             file_path,
             line_number,
+        }
+    }
+
+    /// Create a new index entry with multiple code locations.
+    pub fn with_locations(
+        role: Role,
+        category: Category,
+        content: impl Into<String>,
+        locations: Vec<Location>,
+    ) -> Self {
+        Self {
+            role,
+            category,
+            content: content.into(),
+            timestamp: Utc::now(),
+            locations: if locations.is_empty() {
+                None
+            } else {
+                Some(locations)
+            },
+            file_path: None,
+            line_number: None,
+        }
+    }
+
+    /// Get all locations, normalizing legacy file_path/line_number to Location format.
+    pub fn get_locations(&self) -> Vec<Location> {
+        // Prefer new locations field
+        if let Some(ref locs) = self.locations {
+            return locs.clone();
+        }
+
+        // Fall back to legacy file_path/line_number
+        if let Some(ref path) = self.file_path {
+            vec![Location {
+                file: path.clone(),
+                start_line: self.line_number,
+                end_line: None,
+            }]
+        } else {
+            vec![]
         }
     }
 

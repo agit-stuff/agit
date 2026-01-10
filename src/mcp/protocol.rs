@@ -195,16 +195,35 @@ impl ToolCallResult {
 
 // Tool-specific parameter types
 
+/// A code location for MCP input.
+/// Represents a file with optional line range.
+#[derive(Debug, Clone, Deserialize)]
+pub struct LocationInput {
+    /// Relative file path from repository root.
+    pub file: String,
+    /// Starting line number (1-indexed).
+    #[serde(default)]
+    pub start_line: Option<u32>,
+    /// Ending line number (inclusive).
+    #[serde(default)]
+    pub end_line: Option<u32>,
+}
+
 /// A single log entry for batch logging.
 #[derive(Debug, Deserialize)]
 pub struct LogEntry {
     pub role: String,
     pub category: String,
     pub content: String,
-    /// Optional file path this entry relates to.
+    /// Code locations this entry relates to.
+    /// Each location can specify a file and optional line range.
+    #[serde(default)]
+    pub locations: Option<Vec<LocationInput>>,
+    // --- Legacy fields for backward compatibility ---
+    /// (Deprecated) Use `locations` instead. Optional file path.
     #[serde(default)]
     pub file_path: Option<String>,
-    /// Optional line number in the file.
+    /// (Deprecated) Use `locations` instead. Optional line number.
     #[serde(default)]
     pub line_number: Option<u32>,
 }
@@ -223,10 +242,14 @@ pub struct LogStepParams {
     /// Single entry content (for backward compatibility)
     #[serde(default)]
     pub content: Option<String>,
-    /// Optional file path for single entry mode.
+    /// Code locations for single entry mode.
+    #[serde(default)]
+    pub locations: Option<Vec<LocationInput>>,
+    // --- Legacy fields for backward compatibility ---
+    /// (Deprecated) Use `locations` instead. Optional file path.
     #[serde(default)]
     pub file_path: Option<String>,
-    /// Optional line number for single entry mode.
+    /// (Deprecated) Use `locations` instead. Optional line number.
     #[serde(default)]
     pub line_number: Option<u32>,
     /// Batch of entries (preferred for multiple logs)

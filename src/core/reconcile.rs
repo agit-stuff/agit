@@ -559,6 +559,7 @@ mod tests {
             category: Category::Reasoning,
             content: content.to_string(),
             timestamp: chrono::Utc::now(),
+            locations: None,
             file_path: None,
             line_number: None,
         }

@@ -215,7 +215,8 @@ pub fn parse_trace_content(
                             content: content.to_string(),
                             // Use commit timestamp since we don't have the exact time
                             timestamp: commit_timestamp,
-                            // Legacy trace entries don't have file/line info
+                            // Legacy trace entries don't have location info
+                            locations: None,
                             file_path: None,
                             line_number: None,
                         });

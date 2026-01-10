@@ -6,8 +6,8 @@ use git2::Repository;
 
 use crate::cli::args::CommitArgs;
 use crate::core::{
-    check_conflicted_state, detect_version, ensure_sync, ChangeState, CommitPipeline,
-    EnsureSyncResult, GitNativeCommitPipeline, StorageVersion, SynthesizeSummary,
+    check_conflicted_state, detect_version, ensure_sync, sanitize_entries, ChangeState,
+    CommitPipeline, EnsureSyncResult, GitNativeCommitPipeline, StorageVersion, SynthesizeSummary,
 };
 use crate::error::{AgitError, Result};
 use crate::git::GitRepository;
@@ -51,11 +51,60 @@ pub fn execute(args: CommitArgs) -> Result<()> {
     let pending_entries = index_store.read_all()?;
 
     // Use staged entries if available, otherwise use pending entries
-    let entries = if has_staged {
+    let mut entries = if has_staged {
         index_store.read_staged()?
     } else {
         pending_entries.clone()
     };
+
+    // === AUTO-PRUNING: Strict Binding Enforcement ===
+    // Only apply when NOT using --journal flag (journal = explicit memory-only intent)
+    if !args.journal && !entries.is_empty() {
+        // Get list of files staged for this commit
+        let staged_files = git_repo.staged_files()?;
+
+        // Sanitize entries against staged files
+        let sanitize_result = sanitize_entries(entries, &staged_files);
+
+        // Print warnings for pruned entries
+        if !sanitize_result.pruned.is_empty() {
+            eprintln!();
+            for (pruned_entry, orphaned_paths) in &sanitize_result.pruned {
+                for path in orphaned_paths {
+                    eprintln!("  Pruning orphaned memory for reverted file: {}", path);
+                }
+                // Log the pruned content (truncated)
+                let content_preview = if pruned_entry.content.len() > 60 {
+                    format!("{}...", &pruned_entry.content[..60])
+                } else {
+                    pruned_entry.content.clone()
+                };
+                eprintln!(
+                    "     \u{2514} {}: \"{}\"",
+                    pruned_entry.category, content_preview
+                );
+            }
+            eprintln!();
+            eprintln!(
+                "  {} memory entries pruned (files not staged)",
+                sanitize_result.pruned.len()
+            );
+            eprintln!();
+        }
+
+        // Replace entries with sanitized (kept) entries
+        entries = sanitize_result.kept;
+
+        // Check for "empty" guard condition
+        if entries.is_empty() && staged_files.is_empty() {
+            return Err(AgitError::InvalidArgument(
+                "No effective changes detected. Memories for reverted files were pruned.\n\
+                 Use `agit commit --journal` to force a context-only commit."
+                    .to_string(),
+            ));
+        }
+    }
+    // === END AUTO-PRUNING ===
 
     if entries.is_empty() && !args.amend && !args.journal {
         println!("No thoughts recorded in staging area.");

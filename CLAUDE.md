@@ -10,9 +10,36 @@
       1. You **MUST NOT** call `agit_log_step` during execution (thinking, editing).
       2. You **MUST** buffer all user intents and reasoning internally.
       3. **IMMEDIATELY** after completing code changes (and BEFORE final text), you **MUST** call `agit_log_step` exactly ONCE with the `batch` parameter.
+      4. **INCLUDE LOCATIONS**: When your reasoning relates to specific code, include a `locations` array with file paths and line ranges.
     </instruction>
+    <schema>
+      Each batch entry supports these fields:
+      - role: "user" | "ai" (REQUIRED)
+      - category: "intent" | "reasoning" | "error" (REQUIRED)
+      - content: string (REQUIRED)
+      - locations: array of Location objects (OPTIONAL - use when referencing specific code)
+
+      Location object:
+      - file: string (REQUIRED - relative path from repo root, e.g. "src/main.rs")
+      - start_line: number (OPTIONAL - starting line number, 1-indexed)
+      - end_line: number (OPTIONAL - ending line number, inclusive)
+    </schema>
     <example_payload>
-      { "batch": [ { "role": "user", "...": "..." }, { "role": "ai", "...": "..." } ] }
+      {
+        "batch": [
+          { "role": "user", "category": "intent", "content": "Refactor authentication module" },
+          {
+            "role": "ai",
+            "category": "reasoning",
+            "content": "Restructured token validation and added session handling",
+            "locations": [
+              { "file": "src/auth.rs", "start_line": 42, "end_line": 65 },
+              { "file": "src/auth.rs", "start_line": 120, "end_line": 135 },
+              { "file": "src/session.rs", "start_line": 10, "end_line": 25 }
+            ]
+          }
+        ]
+      }
     </example_payload>
   </critical_rule>
 
