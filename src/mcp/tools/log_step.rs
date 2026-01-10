@@ -12,12 +12,30 @@ use serde_json::Value;
 use tracing::{debug, error, warn};
 
 use crate::core::ensure_sync;
-use crate::domain::{Category, IndexEntry, Role};
+use crate::domain::{Category, IndexEntry, Location, Role};
 #[cfg(test)]
 use crate::mcp::protocol::ToolContent;
-use crate::mcp::protocol::{LogEntry, LogStepParams, ToolCallResult};
+use crate::mcp::protocol::{LocationInput, LogEntry, LogStepParams, ToolCallResult};
 use crate::safety::validate_path_is_internal;
 use crate::storage::{FileIndexStore, IndexStore};
+
+/// Convert LocationInput (MCP protocol) to Location (domain).
+fn convert_location(input: &LocationInput) -> Location {
+    Location {
+        file: input.file.clone(),
+        start_line: input.start_line,
+        end_line: input.end_line,
+    }
+}
+
+/// Convert legacy file_path/line_number to a single Location.
+fn legacy_to_location(file_path: &str, line_number: Option<u32>) -> Location {
+    Location {
+        file: file_path.to_string(),
+        start_line: line_number,
+        end_line: None,
+    }
+}
 
 /// Execute the agit_log_step tool.
 pub fn execute(agit_dir: &Path, arguments: Option<Value>) -> ToolCallResult {
@@ -63,6 +81,7 @@ pub fn execute(agit_dir: &Path, arguments: Option<Value>) -> ToolCallResult {
             &role,
             &category,
             &content,
+            params.locations.as_ref(),
             params.file_path.as_deref(),
             params.line_number,
         )
@@ -91,13 +110,30 @@ fn execute_batch(agit_dir: &Path, entries: Vec<LogEntry>) -> ToolCallResult {
     let mut rejected_paths = Vec::new();
 
     for entry in &entries {
-        // Validate file_path is within repository boundary
-        if let Some(ref file_path) = entry.file_path {
+        // Collect and validate locations (new format or legacy)
+        let locations: Vec<Location> = if let Some(ref locs) = entry.locations {
+            // New locations array format
+            let mut valid_locs = Vec::new();
+            for loc in locs {
+                if let Err(e) = validate_path_is_internal(repo_root, &loc.file) {
+                    rejected_paths.push(format!("{}: {}", loc.file, e));
+                    // Continue to check other locations, don't skip entire entry
+                } else {
+                    valid_locs.push(convert_location(loc));
+                }
+            }
+            valid_locs
+        } else if let Some(ref file_path) = entry.file_path {
+            // Legacy file_path/line_number format
             if let Err(e) = validate_path_is_internal(repo_root, file_path) {
                 rejected_paths.push(format!("{}: {}", file_path, e));
-                continue; // Skip this entry
+                continue; // Skip this entry entirely for legacy format
             }
-        }
+            vec![legacy_to_location(file_path, entry.line_number)]
+        } else {
+            // No locations specified
+            vec![]
+        };
 
         // Validate role
         let role = match entry.role.to_lowercase().as_str() {
@@ -120,14 +156,8 @@ fn execute_batch(agit_dir: &Path, entries: Vec<LogEntry>) -> ToolCallResult {
             },
         };
 
-        // Create and append entry with optional file/line location
-        let index_entry = IndexEntry::with_location(
-            role,
-            category,
-            &entry.content,
-            entry.file_path.clone(),
-            entry.line_number,
-        );
+        // Create and append entry with locations
+        let index_entry = IndexEntry::with_locations(role, category, &entry.content, locations);
         if let Err(e) = index_store.append(&index_entry) {
             errors.push(format!("Failed to log: {}", e));
             continue;
@@ -183,6 +213,7 @@ fn execute_single(
     role: &str,
     category: &str,
     content: &str,
+    locations: Option<&Vec<LocationInput>>,
     file_path: Option<&str>,
     line_number: Option<u32>,
 ) -> ToolCallResult {
@@ -192,14 +223,39 @@ fn execute_single(
         None => return ToolCallResult::error("Cannot determine repository root"),
     };
 
-    // Validate file_path is within repository boundary
-    if let Some(fp) = file_path {
+    // Collect and validate locations (new format or legacy)
+    let mut rejected_paths = Vec::new();
+    let validated_locations: Vec<Location> = if let Some(locs) = locations {
+        // New locations array format
+        let mut valid_locs = Vec::new();
+        for loc in locs {
+            if let Err(e) = validate_path_is_internal(repo_root, &loc.file) {
+                rejected_paths.push(format!("{}: {}", loc.file, e));
+            } else {
+                valid_locs.push(convert_location(loc));
+            }
+        }
+        valid_locs
+    } else if let Some(fp) = file_path {
+        // Legacy file_path/line_number format
         if let Err(e) = validate_path_is_internal(repo_root, fp) {
             return ToolCallResult::error(&format!(
                 "⛔ Path rejected: {}\n\nAgit is a single-repo tool. Use `cd` to switch to the correct repository before logging context for external files.",
                 e
             ));
         }
+        vec![legacy_to_location(fp, line_number)]
+    } else {
+        // No locations specified
+        vec![]
+    };
+
+    // Warn about rejected paths (but continue if some are valid)
+    if !rejected_paths.is_empty() && validated_locations.is_empty() {
+        return ToolCallResult::error(&format!(
+            "⛔ All paths rejected:\n{}\n\nAgit is a single-repo tool.",
+            rejected_paths.join("\n")
+        ));
     }
 
     // Validate role
@@ -227,14 +283,8 @@ fn execute_single(
         },
     };
 
-    // Create and append entry with optional file/line location
-    let entry = IndexEntry::with_location(
-        role_enum,
-        category_enum,
-        content,
-        file_path.map(|s| s.to_string()),
-        line_number,
-    );
+    // Create and append entry with locations
+    let entry = IndexEntry::with_locations(role_enum, category_enum, content, validated_locations);
     let index_store = FileIndexStore::new(agit_dir);
 
     if let Err(e) = index_store.append(&entry) {
