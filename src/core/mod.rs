@@ -10,6 +10,7 @@ use crate::error::Result;
 mod branch_sync;
 mod commit_pipeline;
 mod migration;
+pub mod reconcile;
 mod synthesizer;
 
 pub use branch_sync::*;

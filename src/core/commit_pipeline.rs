@@ -2,6 +2,7 @@
 //!
 //! Orchestrates the full commit workflow:
 //! 1. Acquire lock
+//! 1.5. Check for semantic conflicts (Safety Valve)
 //! 2. Read index entries
 //! 3. Create trace blob
 //! 4. Create/get roadmap blob
@@ -14,6 +15,7 @@
 
 use std::path::PathBuf;
 
+use crate::core::reconcile;
 use crate::core::SynthesizeSummary;
 use crate::domain::{BlobContent, NeuralCommit, WrappedBlob, WrappedNeuralCommit};
 use crate::error::{AgitError, Result};
@@ -94,7 +96,13 @@ impl CommitPipeline {
     }
 
     /// Execute the commit pipeline.
-    pub fn execute(&mut self, message: &str, summary: &str) -> Result<CommitResult> {
+    ///
+    /// # Arguments
+    ///
+    /// * `message` - The commit message
+    /// * `summary` - The synthesized summary
+    /// * `force` - If true, skip semantic conflict check
+    pub fn execute(&mut self, message: &str, summary: &str, force: bool) -> Result<CommitResult> {
         // 1. Acquire exclusive lock
         let _lock = LockGuard::acquire(&lock_path(&self.agit_dir))?;
 
@@ -104,6 +112,24 @@ impl CommitPipeline {
         } else {
             self.index.read_all()?
         };
+
+        // 1.5. Check for semantic conflicts (Safety Valve)
+        if !force {
+            let branch = self.head.get()?.unwrap_or_else(|| "main".to_string());
+            let conflict = reconcile::check_for_conflicts(
+                &self.git,
+                &self.objects,
+                &self.refs,
+                &branch,
+                &entries,
+            )?;
+
+            if conflict.has_conflict {
+                return Err(AgitError::SemanticConflict {
+                    files: conflict.conflicting_files,
+                });
+            }
+        }
 
         // 3. Create trace blob
         let trace_content = SynthesizeSummary::format_trace(&entries);
@@ -314,7 +340,13 @@ impl GitNativeCommitPipeline {
     /// For V2 Git-native storage:
     /// - Code changes: Create Git commit, then neural commit pointing to it
     /// - Memory-only: Create neural commit only (no Git commit needed)
-    pub fn execute(&mut self, message: &str, summary: &str) -> Result<CommitResult> {
+    ///
+    /// # Arguments
+    ///
+    /// * `message` - The commit message
+    /// * `summary` - The synthesized summary
+    /// * `force` - If true, skip semantic conflict check
+    pub fn execute(&mut self, message: &str, summary: &str, force: bool) -> Result<CommitResult> {
         // 1. Acquire exclusive lock
         let _lock = LockGuard::acquire(&lock_path(&self.agit_dir))?;
 
@@ -324,6 +356,24 @@ impl GitNativeCommitPipeline {
         } else {
             self.index.read_all()?
         };
+
+        // 1.5. Check for semantic conflicts (Safety Valve)
+        if !force {
+            let branch = self.head.get()?.unwrap_or_else(|| "main".to_string());
+            let conflict = reconcile::check_for_conflicts(
+                &self.git,
+                &self.objects,
+                &self.refs,
+                &branch,
+                &entries,
+            )?;
+
+            if conflict.has_conflict {
+                return Err(AgitError::SemanticConflict {
+                    files: conflict.conflicting_files,
+                });
+            }
+        }
 
         // 3. Create trace blob
         let trace_content = SynthesizeSummary::format_trace(&entries);
