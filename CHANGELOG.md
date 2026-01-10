@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2025-01-10
+
+### Added
+- **Semantic conflict detection (Safety Valve)** - Prevents accidental overwrites when external commits touch files mentioned in pending thoughts
+  - Detects "ghost commits" (git commits made outside Agit)
+  - Blocks commit if ghost commits modified files referenced in pending thoughts
+  - New `--force` flag to override the safety check
+  - Warnings displayed in `agit status` when conflicts exist
+- **Bidirectional reconciliation** - Handles both forward and backward git history changes
+  - Forward: detects ghost commits (existing)
+  - Backward: detects git rewinds (`git reset --hard`) and snaps Agit HEAD to valid ancestor
+  - Orphaned neural commits preserved for potential recovery via `git reflog`
+- **Auto-rebuild search index after pull** - Eliminates need for manual `agit search rebuild`
+  - Incremental indexing for pulled commits
+  - Falls back to full rebuild if index is unhealthy
+  - Non-fatal: warns on failure but doesn't block pull
+
+### Changed
+- **Upgraded system policy templates** - Stricter enforcement using XML + RFC 2119 language
+  - BATCH_LOGGING: Mandatory silence protocol for `agit_log_step`
+  - RETRIEVAL_VERIFICATION: Required context lookup for history questions
+  - CONTEXT_INJECTION: Blocking rule for file modifications without history check
+
 ## [1.0.0] - 2025-01-10
 
 ### Added
@@ -94,7 +117,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - JSON-RPC input validation in MCP server
 - No shell command execution with user input
 
-[Unreleased]: https://github.com/agit-stuff/agit/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/agit-stuff/agit/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/agit-stuff/agit/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/agit-stuff/agit/compare/v0.3.0...v1.0.0
 [0.3.0]: https://github.com/agit-stuff/agit/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/agit-stuff/agit/releases/tag/v0.2.0
