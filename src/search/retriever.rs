@@ -103,6 +103,8 @@ mod tests {
             category,
             content: content.to_string(),
             timestamp: Utc::now(),
+            file_path: None,
+            line_number: None,
         }
     }
 

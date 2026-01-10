@@ -65,6 +65,12 @@ pub struct IndexEntry {
     /// When this entry was created.
     #[serde(with = "chrono::serde::ts_seconds")]
     pub timestamp: DateTime<Utc>,
+    /// Optional file path this entry relates to.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub file_path: Option<String>,
+    /// Optional line number in the file.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub line_number: Option<u32>,
 }
 
 impl IndexEntry {
@@ -75,6 +81,26 @@ impl IndexEntry {
             category,
             content: content.into(),
             timestamp: Utc::now(),
+            file_path: None,
+            line_number: None,
+        }
+    }
+
+    /// Create a new index entry with file/line location.
+    pub fn with_location(
+        role: Role,
+        category: Category,
+        content: impl Into<String>,
+        file_path: Option<String>,
+        line_number: Option<u32>,
+    ) -> Self {
+        Self {
+            role,
+            category,
+            content: content.into(),
+            timestamp: Utc::now(),
+            file_path,
+            line_number,
         }
     }
 

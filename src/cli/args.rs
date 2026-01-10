@@ -85,6 +85,14 @@ pub struct RecordArgs {
     /// Record as intent instead of note
     #[arg(short, long)]
     pub intent: bool,
+
+    /// File path this record relates to (e.g., "src/auth.rs")
+    #[arg(short, long)]
+    pub file: Option<String>,
+
+    /// Line number in the file
+    #[arg(short, long)]
+    pub line: Option<u32>,
 }
 
 /// Arguments for the `status` command

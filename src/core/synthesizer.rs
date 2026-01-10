@@ -71,15 +71,24 @@ impl SynthesizeSummary {
     }
 
     /// Get all entries as a formatted trace string.
+    ///
+    /// Format: `[HH:MM:SS] role/category @ file:line: content`
+    /// The `@ file:line` part is only included when location is present.
     pub fn format_trace(entries: &[IndexEntry]) -> String {
         entries
             .iter()
             .map(|e| {
+                let location = match (&e.file_path, e.line_number) {
+                    (Some(f), Some(l)) => format!(" @ {}:{}", f, l),
+                    (Some(f), None) => format!(" @ {}", f),
+                    _ => String::new(),
+                };
                 format!(
-                    "[{}] {}/{}: {}",
+                    "[{}] {}/{}{}: {}",
                     e.timestamp.format("%H:%M:%S"),
                     e.role,
                     e.category,
+                    location,
                     e.content
                 )
             })

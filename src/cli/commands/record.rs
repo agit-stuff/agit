@@ -46,8 +46,9 @@ pub fn execute(args: RecordArgs) -> Result<()> {
         Category::Note
     };
 
-    // Create and append entry
-    let entry = IndexEntry::new(role, category, &args.message);
+    // Create and append entry with optional file/line location
+    let entry =
+        IndexEntry::with_location(role, category, &args.message, args.file.clone(), args.line);
     append_entry(&agit_dir, &entry)?;
 
     // Print confirmation
