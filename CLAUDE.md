@@ -24,6 +24,17 @@
       - start_line: number (OPTIONAL - starting line number, 1-indexed)
       - end_line: number (OPTIONAL - ending line number, inclusive)
     </schema>
+    <strict_binding>
+      WARNING - STRICT BINDING ENFORCED:
+      When `agit commit` runs, memories are validated against git staged files:
+      - Memories WITH locations: AUTO-PRUNED if their files are NOT in git staging area
+      - Memories WITHOUT locations: Always kept (treated as general context)
+
+      CONSEQUENCE: If you log reasoning about "src/auth.rs" but the user reverts that file
+      before committing, your memory will be DELETED. To preserve your reasoning:
+      1. Include locations for file-specific changes
+      2. Omit locations for general decisions/architecture notes
+    </strict_binding>
     <example_payload>
       {
         "batch": [
@@ -34,8 +45,7 @@
             "content": "Restructured token validation and added session handling",
             "locations": [
               { "file": "src/auth.rs", "start_line": 42, "end_line": 65 },
-              { "file": "src/auth.rs", "start_line": 120, "end_line": 135 },
-              { "file": "src/session.rs", "start_line": 10, "end_line": 25 }
+              { "file": "src/auth.rs", "start_line": 120, "end_line": 135 }
             ]
           }
         ]
