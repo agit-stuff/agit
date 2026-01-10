@@ -84,6 +84,7 @@ mod tests {
             category,
             content: content.to_string(),
             timestamp: Utc::now(),
+            locations: None,
             file_path: None,
             line_number: None,
         }
