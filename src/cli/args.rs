@@ -159,6 +159,13 @@ pub struct CommitArgs {
     /// pending thoughts. Use this flag to proceed anyway.
     #[arg(short, long)]
     pub force: bool,
+
+    /// Allow recording a memory without code changes (Journal Entry)
+    ///
+    /// Creates an empty git commit to preserve the decision history even when
+    /// no code changes are present. Required in non-interactive environments.
+    #[arg(long, visible_alias = "allow-empty")]
+    pub journal: bool,
 }
 
 /// Arguments for the `server` command

@@ -147,6 +147,33 @@ impl GitRepository {
         Ok(commit_id.to_string())
     }
 
+    /// Create an empty git commit (same tree as parent).
+    ///
+    /// Used for Journal Entries when no code changes are present.
+    /// This is equivalent to `git commit --allow-empty`.
+    ///
+    /// # Arguments
+    ///
+    /// * `message` - The commit message
+    ///
+    /// # Returns
+    ///
+    /// The hash of the newly created (empty) commit.
+    pub fn commit_empty(&self, message: &str) -> Result<String> {
+        let sig = self.repo.signature()?;
+
+        // Get the parent commit and its tree
+        let parent = self.repo.head()?.peel_to_commit()?;
+        let tree = parent.tree()?;
+
+        // Create commit with same tree as parent (empty commit)
+        let commit_id = self
+            .repo
+            .commit(Some("HEAD"), &sig, &sig, message, &tree, &[&parent])?;
+
+        Ok(commit_id.to_string())
+    }
+
     /// Stage files matching the given pathspecs.
     pub fn stage_files(&self, pathspecs: &[&str]) -> Result<usize> {
         let mut index = self.repo.index()?;

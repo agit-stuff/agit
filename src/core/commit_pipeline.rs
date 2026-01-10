@@ -157,13 +157,17 @@ impl CommitPipeline {
                 }
             },
             ChangeState::MemoryOnly => {
-                // V1: Stage .agit/ and create git commit with [Agit] prefix
+                // V1: Stage .agit/ and create git commit for Journal Entry
                 self.git.stage_files(&[".agit/"])?;
-                let prefixed = format!("[Agit] Context Update: {}", message);
+                let prefixed = format!("[Agit] Journal: {}", message);
                 (self.git.commit(&prefixed)?, true, true)
             },
             ChangeState::NoChanges => {
-                return Err(AgitError::NothingToCommit);
+                // NoChanges reaching here means --journal was passed (checked in CLI)
+                // V1: Stage .agit/ and create git commit for Journal Entry (decision checkpoint)
+                self.git.stage_files(&[".agit/"])?;
+                let prefixed = format!("[Agit] Journal: {}", message);
+                (self.git.commit(&prefixed)?, true, true)
             },
         };
 
@@ -401,11 +405,15 @@ impl GitNativeCommitPipeline {
                 }
             },
             ChangeState::MemoryOnly => {
-                // V2: No Git commit for memory-only - just link to current HEAD
-                (self.git.head_commit_hash()?, false, true)
+                // V2: Create empty Git commit for Journal Entry (memory-only)
+                let prefixed = format!("[Agit] Journal: {}", message);
+                (self.git.commit_empty(&prefixed)?, true, true)
             },
             ChangeState::NoChanges => {
-                return Err(AgitError::NothingToCommit);
+                // NoChanges reaching here means --journal was passed (checked in CLI)
+                // V2: Create empty Git commit for Journal Entry (decision checkpoint)
+                let prefixed = format!("[Agit] Journal: {}", message);
+                (self.git.commit_empty(&prefixed)?, true, true)
             },
         };
 
