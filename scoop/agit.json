@@ -1,6 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/ScoopInstaller/Scoop/master/schema.json",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "AI-native Git wrapper for capturing context alongside code",
   "homepage": "https://github.com/agit-stuff/agit",
   "license": {
@@ -9,8 +9,8 @@
   },
   "architecture": {
     "64bit": {
-      "url": "https://github.com/agit-stuff/agit/releases/download/v1.2.0/agit-windows-x86_64.zip",
-      "hash": "sha256:89a966e85cdf7cd766e08de7574ae22b5bca3fca3acd9d8a31d925bc094bc002"
+      "url": "https://github.com/agit-stuff/agit/releases/download/v1.2.1/agit-windows-x86_64.zip",
+      "hash": "sha256:c41a02e516acf54174fc6364f9f3c5e19fa2a804f5fca310e2cdb55d01b29872"
     }
   },
   "bin": "agit.exe",
