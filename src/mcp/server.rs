@@ -162,7 +162,7 @@ impl McpServer {
         let tools = vec![
             ToolDefinition {
                 name: "agit_log_step".to_string(),
-                description: "BATCH MODE ONLY. Call ONCE at task completion with 'batch' parameter. FORBIDDEN: calling mid-task or without batch. Each call triggers user popup.".to_string(),
+                description: "BATCH MODE ONLY. Call ONCE at task completion with 'batch' parameter. IMPORTANT: Include 'locations' array for file-specific reasoning - memories without locations matching staged files are AUTO-PRUNED on commit (Strict Binding). FORBIDDEN: calling mid-task or without batch.".to_string(),
                 input_schema: json!({
                     "type": "object",
                     "properties": {
@@ -182,7 +182,7 @@ impl McpServer {
                         },
                         "batch": {
                             "type": "array",
-                            "description": "REQUIRED. Array of {role, category, content} entries.",
+                            "description": "REQUIRED. Array of {role, category, content, locations?} entries.",
                             "items": {
                                 "type": "object",
                                 "properties": {
@@ -196,6 +196,28 @@ impl McpServer {
                                     },
                                     "content": {
                                         "type": "string"
+                                    },
+                                    "locations": {
+                                        "type": "array",
+                                        "description": "IMPORTANT: Include file locations for Strict Binding. Memories without locations matching staged files are auto-pruned on commit.",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "file": {
+                                                    "type": "string",
+                                                    "description": "Relative file path from repo root (e.g., 'src/auth.rs')"
+                                                },
+                                                "start_line": {
+                                                    "type": "integer",
+                                                    "description": "Starting line number (1-indexed)"
+                                                },
+                                                "end_line": {
+                                                    "type": "integer",
+                                                    "description": "Ending line number (inclusive)"
+                                                }
+                                            },
+                                            "required": ["file"]
+                                        }
                                     }
                                 },
                                 "required": ["role", "category", "content"]
