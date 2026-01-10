@@ -3,11 +3,11 @@
 //! This module ensures the AGIT HEAD tracks the Git branch, keeping
 //! the neural graph aligned with the code history.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::error::Result;
 use crate::git::GitRepository;
-use crate::storage::{FileHeadStore, FileRefStore, HeadStore, RefStore};
+use crate::storage::{FileHeadStore, FileIndexStore, FileRefStore, HeadStore, RefStore};
 
 /// Branch synchronization status.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -35,6 +35,9 @@ pub struct BranchSync {
     git: GitRepository,
     head_store: FileHeadStore,
     ref_store: FileRefStore,
+    index_store: FileIndexStore,
+    #[allow(dead_code)]
+    agit_dir: PathBuf,
 }
 
 impl BranchSync {
@@ -43,11 +46,14 @@ impl BranchSync {
         let git = GitRepository::open(project_root)?;
         let head_store = FileHeadStore::new(agit_dir);
         let ref_store = FileRefStore::new(agit_dir);
+        let index_store = FileIndexStore::new(agit_dir);
 
         Ok(Self {
             git,
             head_store,
             ref_store,
+            index_store,
+            agit_dir: agit_dir.to_path_buf(),
         })
     }
 
@@ -131,6 +137,10 @@ impl BranchSync {
     /// This is the main entry point for lazy sync. Call this at the start
     /// of every AGIT command to ensure the neural graph follows Git.
     ///
+    /// When switching branches, this also handles per-branch index stashing:
+    /// - Stashes the current index to `.agit/stash/<old_branch>/index`
+    /// - Restores the index from `.agit/stash/<new_branch>/index` (or clears if none)
+    ///
     /// - If already in sync: Returns `AlreadyInSync`
     /// - If Git branch exists in AGIT: Switches HEAD, returns `SwitchedToExisting`
     /// - If Git branch is new: Forks memory from current point, returns `ForkedToNew`
@@ -145,9 +155,23 @@ impl BranchSync {
             },
             Some(old_branch) => {
                 // Git switched to a different branch
+
+                // Stash the current index for the old branch (preserve pending thoughts)
+                let stashed = self.index_store.stash_to_branch(&old_branch)?;
+                if stashed {
+                    eprintln!("🔀 Stashed pending thoughts for branch '{}'", old_branch);
+                }
+
                 if self.ref_store.get(&git_branch)?.is_some() {
                     // Branch exists in AGIT refs - just switch HEAD
                     self.head_store.set(&git_branch)?;
+
+                    // Restore index from the new branch's stash (or clear if none)
+                    let restored = self.index_store.restore_from_branch(&git_branch)?;
+                    if restored {
+                        eprintln!("🔀 Restored pending thoughts for branch '{}'", git_branch);
+                    }
+
                     Ok(EnsureSyncResult::SwitchedToExisting {
                         old_branch,
                         new_branch: git_branch,
@@ -160,6 +184,13 @@ impl BranchSync {
                         self.ref_store.update(&git_branch, hash)?;
                     }
                     self.head_store.set(&git_branch)?;
+
+                    // Try to restore index from the new branch's stash (or clear if none)
+                    let restored = self.index_store.restore_from_branch(&git_branch)?;
+                    if restored {
+                        eprintln!("🔀 Restored pending thoughts for branch '{}'", git_branch);
+                    }
+
                     Ok(EnsureSyncResult::ForkedToNew {
                         old_branch,
                         new_branch: git_branch,

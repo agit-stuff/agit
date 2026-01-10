@@ -38,6 +38,74 @@ impl FileIndexStore {
     fn staged_path(&self) -> PathBuf {
         self.index_path.with_file_name("staged-index")
     }
+
+    /// Get the path to the stash directory for a specific branch.
+    fn stash_path(&self, branch: &str) -> PathBuf {
+        // Go up from .agit/index to .agit/, then into stash/<branch>/index
+        self.index_path
+            .parent()
+            .unwrap_or(Path::new("."))
+            .join("stash")
+            .join(branch)
+            .join("index")
+    }
+
+    /// Stash the current index to a branch-specific location.
+    ///
+    /// This is called when switching branches to preserve the pending thoughts
+    /// for the old branch. The index is copied to `.agit/stash/<branch>/index`.
+    ///
+    /// # Arguments
+    ///
+    /// * `branch` - The branch name to stash the index for
+    ///
+    /// # Returns
+    ///
+    /// `true` if the index was stashed, `false` if there was nothing to stash.
+    pub fn stash_to_branch(&self, branch: &str) -> Result<bool> {
+        if !self.index_path.exists() || self.count()? == 0 {
+            return Ok(false); // Nothing to stash
+        }
+
+        let stash_path = self.stash_path(branch);
+
+        // Create the stash directory if it doesn't exist
+        if let Some(parent) = stash_path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+
+        // Copy the index to the stash location
+        fs::copy(&self.index_path, &stash_path)?;
+
+        Ok(true)
+    }
+
+    /// Restore the index from a branch-specific stash location.
+    ///
+    /// This is called when switching to a branch to restore its pending thoughts.
+    /// If a stash exists for the branch, it's copied to `.agit/index`.
+    /// If no stash exists, the index is cleared.
+    ///
+    /// # Arguments
+    ///
+    /// * `branch` - The branch name to restore the index from
+    ///
+    /// # Returns
+    ///
+    /// `true` if a stash was restored, `false` if the index was cleared.
+    pub fn restore_from_branch(&self, branch: &str) -> Result<bool> {
+        let stash_path = self.stash_path(branch);
+
+        if stash_path.exists() {
+            // Restore the stash to the main index
+            fs::copy(&stash_path, &self.index_path)?;
+            Ok(true)
+        } else {
+            // No stash for this branch - clear the index
+            self.clear()?;
+            Ok(false)
+        }
+    }
 }
 
 impl IndexStore for FileIndexStore {
