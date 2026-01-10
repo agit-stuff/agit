@@ -36,9 +36,17 @@ pub fn execute(args: CommitArgs) -> Result<()> {
         }
     }
 
-    // Check if there are entries in the index
+    // Check if there are entries in the index or staged-index
     let index_store = FileIndexStore::new(&agit_dir);
-    let entries = index_store.read_all()?;
+    let has_staged = index_store.has_staged()?;
+    let pending_entries = index_store.read_all()?;
+
+    // Use staged entries if available, otherwise use pending entries
+    let entries = if has_staged {
+        index_store.read_staged()?
+    } else {
+        pending_entries.clone()
+    };
 
     if entries.is_empty() && !args.amend {
         println!("No thoughts recorded in staging area.");
@@ -149,7 +157,7 @@ pub fn execute(args: CommitArgs) -> Result<()> {
     let result = if is_v2 {
         let mut pipeline =
             GitNativeCommitPipeline::new(agit_dir.clone(), GitRepository::open(&cwd)?)?;
-        pipeline.execute(&message, &final_summary)?
+        pipeline.execute(&message, &final_summary, args.force)?
     } else {
         let object_store = FileObjectStore::new(&agit_dir);
         let ref_store = FileRefStore::new(&agit_dir);
@@ -162,7 +170,7 @@ pub fn execute(args: CommitArgs) -> Result<()> {
             head_store,
             index_store.clone(),
         );
-        pipeline.execute(&message, &final_summary)?
+        pipeline.execute(&message, &final_summary, args.force)?
     };
 
     // Show commit result
