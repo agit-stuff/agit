@@ -10,7 +10,7 @@
   "architecture": {
     "64bit": {
       "url": "https://github.com/agit-stuff/agit/releases/download/v1.1.1/agit-windows-x86_64.zip",
-      "hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+      "hash": "sha256:e5414fa15540f1b478834040c081d8ada7d0745a00a0c2c0565ec9baeddf1e0f"
     }
   },
   "bin": "agit.exe",
