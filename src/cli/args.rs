@@ -57,6 +57,12 @@ pub enum Commands {
 
     /// Reset (clear) pending thoughts and staged context
     Reset(ResetArgs),
+
+    /// Sync agit state with current git state
+    Sync(SyncArgs),
+
+    /// Manage git hooks for automatic sync
+    Hooks(HooksArgs),
 }
 
 /// Arguments for the `init` command
@@ -77,6 +83,10 @@ pub struct InitArgs {
     /// Update AI instruction files to the latest version without destroying custom settings
     #[arg(short, long)]
     pub update: bool,
+
+    /// Skip git hook installation
+    #[arg(long)]
+    pub no_hooks: bool,
 }
 
 /// Arguments for the `record` command
@@ -268,4 +278,35 @@ pub struct ResetArgs {
     /// Skip confirmation prompt
     #[arg(short, long)]
     pub yes: bool,
+}
+
+/// Arguments for the `sync` command
+#[derive(Parser, Debug)]
+pub struct SyncArgs {
+    /// The git hook that triggered this sync (for internal use)
+    #[arg(long)]
+    pub hook: Option<String>,
+
+    /// Run silently (suppress non-error output)
+    #[arg(short, long)]
+    pub quiet: bool,
+}
+
+/// Arguments for the `hooks` command
+#[derive(Parser, Debug)]
+pub struct HooksArgs {
+    /// Hooks subcommand
+    #[command(subcommand)]
+    pub command: HooksCommands,
+}
+
+/// Hooks subcommands
+#[derive(Subcommand, Debug)]
+pub enum HooksCommands {
+    /// Install agit git hooks for automatic sync
+    Install,
+    /// Remove agit git hooks
+    Uninstall,
+    /// Show current hook installation status
+    Status,
 }

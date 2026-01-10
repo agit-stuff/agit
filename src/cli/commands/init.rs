@@ -4,6 +4,7 @@ use std::fs;
 use std::path::Path;
 
 use crate::cli::args::InitArgs;
+use crate::cli::commands::hooks;
 use crate::error::{AgitError, Result};
 use crate::storage::{FileHeadStore, FileIndexStore};
 use crate::templates::{
@@ -74,6 +75,14 @@ pub fn execute(args: InitArgs) -> Result<()> {
         update_gitignore(&cwd)?;
     }
 
+    // Install git hooks for automatic sync
+    if !args.no_hooks {
+        if let Err(e) = hooks::install_all_hooks(&cwd) {
+            eprintln!("Warning: Failed to install git hooks: {}", e);
+            eprintln!("You can install them manually with: agit hooks install");
+        }
+    }
+
     println!("\nInitialized AGIT repository in {}", agit_dir.display());
 
     if !args.no_templates {
@@ -83,7 +92,12 @@ pub fn execute(args: InitArgs) -> Result<()> {
         }
     }
 
+    if !args.no_hooks {
+        println!("\nInstalled git hooks: post-commit, post-checkout, post-merge, post-rewrite");
+    }
+
     println!("\nAGIT is ready! MCP configs auto-detected by Cursor and Claude Code.");
+    println!("Git hooks will keep agit in sync when you use native git commands.");
     println!("Restart your AI assistant to activate AGIT memory.");
 
     Ok(())

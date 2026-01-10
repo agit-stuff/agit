@@ -36,5 +36,7 @@ fn run() -> Result<()> {
         Commands::Server(args) => agit::cli::commands::server::execute(args),
         Commands::Search(args) => agit::cli::commands::search::execute(args),
         Commands::Reset(args) => agit::cli::commands::reset::execute(args),
+        Commands::Sync(args) => agit::cli::commands::sync::execute(args),
+        Commands::Hooks(args) => agit::cli::commands::hooks::execute(args),
     }
 }
