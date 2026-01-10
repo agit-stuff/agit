@@ -261,6 +261,27 @@ impl GitRepository {
         Ok(changed_files)
     }
 
+    /// Check if `ancestor` is reachable from `descendant` (i.e., ancestor is in history).
+    ///
+    /// This is used to detect "dangling head" scenarios where Agit points to a
+    /// commit that no longer exists in Git's history (e.g., after `git reset --hard`).
+    ///
+    /// # Arguments
+    ///
+    /// * `ancestor` - The commit hash to check if it's an ancestor
+    /// * `descendant` - The commit hash to check if ancestor is reachable from
+    ///
+    /// # Returns
+    ///
+    /// `true` if ancestor is reachable from descendant, `false` otherwise.
+    pub fn is_ancestor(&self, ancestor: &str, descendant: &str) -> Result<bool> {
+        let ancestor_oid = git2::Oid::from_str(ancestor)?;
+        let descendant_oid = git2::Oid::from_str(descendant)?;
+
+        // graph_descendant_of returns true if `descendant` is a descendant of `ancestor`
+        Ok(self.repo.graph_descendant_of(descendant_oid, ancestor_oid)?)
+    }
+
     /// Get the list of commits between two commit hashes (exclusive of from, inclusive of to).
     ///
     /// This walks the commit history from `to_hash` back to `from_hash` and returns

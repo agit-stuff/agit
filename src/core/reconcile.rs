@@ -1,11 +1,16 @@
 //! Semantic conflict reconciliation for Agit.
 //!
-//! This module detects "ghost commits" - external git commits that happened
-//! while Agit had pending thoughts in the index. It checks for semantic conflicts
-//! where ghost commits modified files mentioned in pending thoughts.
+//! This module provides bidirectional reconciliation between Git and Agit:
 //!
-//! This prevents "hallucinated" thoughts from entering the neural graph when
-//! the codebase reality has changed underneath.
+//! **Forward reconciliation (Ghost Commits)**:
+//! Detects external git commits that happened while Agit had pending thoughts.
+//! Checks for semantic conflicts where ghost commits modified files mentioned
+//! in pending thoughts.
+//!
+//! **Backward reconciliation (Rewind/Dangling Head)**:
+//! Detects when Git has "rewound" (e.g., `git reset --hard`) and Agit's HEAD
+//! points to a neural commit attached to a git commit that no longer exists.
+//! Snaps Agit back to a valid ancestor.
 
 use crate::domain::{IndexEntry, WrappedNeuralCommit};
 use crate::error::Result;
@@ -303,6 +308,135 @@ pub fn check_for_conflicts<O: ObjectStore, R: RefStore>(
 
     // Check for semantic conflicts
     Ok(check_semantic_conflict(&ghost_info, pending_entries))
+}
+
+// =============================================================================
+// Backward Reconciliation (Rewind Detection)
+// =============================================================================
+
+/// Result of rewind reconciliation.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RewindResult {
+    /// Agit HEAD is valid - no rewind needed.
+    NoRewindNeeded,
+    /// Agit was rewound to a valid ancestor.
+    Rewound {
+        /// The orphaned neural commit hash (the old HEAD).
+        old_hash: String,
+        /// The valid ancestor we snapped to (the new HEAD).
+        new_hash: String,
+        /// Number of orphaned commits left behind (not deleted).
+        orphaned_count: usize,
+    },
+    /// No valid ancestor found - all neural commits point to unreachable git commits.
+    /// This is rare and likely indicates corruption or a very unusual git operation.
+    NoValidAncestor {
+        /// The current neural hash that has no valid git ancestor.
+        neural_hash: String,
+    },
+}
+
+/// Detect if Agit HEAD is "dangling" and snap back to a valid ancestor.
+///
+/// This handles the scenario where the user runs `git reset --hard HEAD~N` and
+/// Git moves backward, leaving Agit pointing to a neural commit attached to a
+/// git commit that no longer exists in the history.
+///
+/// **Data Safety**: Orphaned neural commits are NOT deleted. They remain in storage
+/// and can potentially be recovered if the user restores the git commit via `git reflog`.
+///
+/// # Arguments
+///
+/// * `git` - Git repository wrapper
+/// * `objects` - Object store for loading neural commits
+/// * `refs` - Ref store for reading/updating branch heads
+/// * `branch` - The current branch name
+///
+/// # Returns
+///
+/// A `RewindResult` indicating what action was taken (if any).
+pub fn reconcile_rewind<O: ObjectStore, R: RefStore>(
+    git: &GitRepository,
+    objects: &O,
+    refs: &R,
+    branch: &str,
+) -> Result<RewindResult> {
+    // 1. Get current agit HEAD neural commit
+    let neural_hash = match refs.get(branch)? {
+        Some(h) => h,
+        None => return Ok(RewindResult::NoRewindNeeded), // No commits yet
+    };
+
+    // 2. Load neural commit and get its git_hash
+    let data = objects.load(&neural_hash)?;
+    let wrapped: WrappedNeuralCommit = serde_json::from_slice(&data)?;
+    let agit_git_hash = &wrapped.data.git_hash;
+
+    // 3. Get current Git HEAD
+    let current_git_head = git.head_commit_hash()?;
+
+    // 4. Special case: if hashes match exactly, we're in perfect sync
+    if agit_git_hash == &current_git_head {
+        return Ok(RewindResult::NoRewindNeeded);
+    }
+
+    // 5. Check if agit's git_hash is reachable from current git HEAD
+    //    (i.e., is agit's git commit an ancestor of current git HEAD?)
+    if git.is_ancestor(agit_git_hash, &current_git_head)? {
+        return Ok(RewindResult::NoRewindNeeded); // Still valid - git moved forward
+    }
+
+    // 6. Git has rewound! Walk agit history backwards to find valid ancestor
+    find_valid_ancestor(git, objects, refs, branch, &neural_hash, &current_git_head)
+}
+
+/// Walk the agit commit chain backwards to find a neural commit whose git_hash
+/// is reachable from the current git HEAD.
+fn find_valid_ancestor<O: ObjectStore, R: RefStore>(
+    git: &GitRepository,
+    objects: &O,
+    refs: &R,
+    branch: &str,
+    start_hash: &str,
+    git_head: &str,
+) -> Result<RewindResult> {
+    let mut current = start_hash.to_string();
+    let mut orphaned_count = 0;
+
+    loop {
+        // Load the current neural commit
+        let data = objects.load(&current)?;
+        let wrapped: WrappedNeuralCommit = serde_json::from_slice(&data)?;
+        let commit = &wrapped.data;
+
+        // Check if this commit's git_hash is reachable from git HEAD
+        // (handles both exact match and ancestor relationship)
+        let is_valid = commit.git_hash == git_head
+            || git.is_ancestor(&commit.git_hash, git_head)?;
+
+        if is_valid {
+            // Found valid ancestor - update ref to point here
+            refs.update(branch, &current)?;
+            return Ok(RewindResult::Rewound {
+                old_hash: start_hash.to_string(),
+                new_hash: current,
+                orphaned_count,
+            });
+        }
+
+        orphaned_count += 1;
+
+        // Move to parent neural commit
+        match commit.first_parent() {
+            Some(parent) => current = parent.to_string(),
+            None => {
+                // Reached root with no valid ancestor - very unusual
+                return Ok(RewindResult::NoValidAncestor {
+                    neural_hash: start_hash.to_string(),
+                });
+            }
+        }
+    }
 }
 
 #[cfg(test)]
