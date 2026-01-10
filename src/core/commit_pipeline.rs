@@ -285,6 +285,97 @@ impl CommitPipeline {
 
         Ok(parents)
     }
+
+    /// Link pending thoughts to an existing git commit.
+    ///
+    /// This is used by git hooks to attach thoughts recorded via MCP
+    /// to commits made directly with `git commit`.
+    ///
+    /// Unlike `execute()`, this does NOT create a new git commit -
+    /// it only creates a neural commit pointing to the provided git hash.
+    pub fn link_to_existing_commit(
+        &mut self,
+        git_hash: &str,
+        summary: &str,
+    ) -> Result<CommitResult> {
+        // 1. Acquire exclusive lock
+        let _lock = LockGuard::acquire(&lock_path(&self.agit_dir))?;
+
+        // 2. Read index entries
+        let entries = if self.index.has_staged()? {
+            self.index.read_staged()?
+        } else {
+            self.index.read_all()?
+        };
+
+        // 3. Create trace blob
+        let trace_content = SynthesizeSummary::format_trace(&entries);
+        let trace_blob = BlobContent::trace(&trace_content);
+        let trace_json = serde_json::to_vec(&WrappedBlob::wrap(trace_blob))?;
+        let trace_hash = self.objects.save(&trace_json)?;
+
+        // 4. Get or create roadmap blob
+        let roadmap_hash = self.get_or_create_roadmap()?;
+
+        // 5. Get current branch
+        let branch = self.head.get()?.unwrap_or_else(|| "main".to_string());
+
+        // 6. Get parent neural commit hash(es)
+        let parent_hashes = self.get_parent_hashes(&branch)?;
+
+        // 7. Create neural commit linked to existing git hash
+        let author = self
+            .git
+            .config_user_email()?
+            .unwrap_or_else(|| "unknown".to_string());
+
+        let neural_commit = if parent_hashes.len() > 1 {
+            NeuralCommit::new_with_parents(
+                git_hash,
+                parent_hashes,
+                &author,
+                &roadmap_hash,
+                &trace_hash,
+                summary,
+            )
+        } else {
+            NeuralCommit::new(
+                git_hash,
+                parent_hashes.into_iter().next(),
+                &author,
+                &roadmap_hash,
+                &trace_hash,
+                summary,
+            )
+        };
+
+        // 8. Save neural commit
+        let wrapped = WrappedNeuralCommit::wrap(neural_commit);
+        let commit_json = serde_json::to_vec(&wrapped)?;
+        let neural_hash = self.objects.save(&commit_json)?;
+
+        // 9. Update branch ref
+        self.refs.update(&branch, &neural_hash)?;
+
+        // 9.5. Index entries for full-text search (non-fatal)
+        if let Err(e) = crate::search::indexer::index_entries(&self.agit_dir, &entries) {
+            tracing::warn!("Failed to index entries for search: {}", e);
+        }
+
+        // 10. Clear index
+        if self.index.has_staged()? {
+            self.index.clear_staged()?;
+        } else {
+            self.index.clear()?;
+        }
+
+        Ok(CommitResult {
+            neural_hash,
+            git_hash: git_hash.to_string(),
+            git_commit_created: false,
+            is_memory_only: false,
+        })
+    }
 }
 
 /// Git-native commit pipeline using Git ODB and refs/agit/* namespace.
@@ -530,5 +621,96 @@ impl GitNativeCommitPipeline {
         }
 
         Ok(parents)
+    }
+
+    /// Link pending thoughts to an existing git commit.
+    ///
+    /// This is used by git hooks to attach thoughts recorded via MCP
+    /// to commits made directly with `git commit`.
+    ///
+    /// Unlike `execute()`, this does NOT create a new git commit -
+    /// it only creates a neural commit pointing to the provided git hash.
+    pub fn link_to_existing_commit(
+        &mut self,
+        git_hash: &str,
+        summary: &str,
+    ) -> Result<CommitResult> {
+        // 1. Acquire exclusive lock
+        let _lock = LockGuard::acquire(&lock_path(&self.agit_dir))?;
+
+        // 2. Read index entries
+        let entries = if self.index.has_staged()? {
+            self.index.read_staged()?
+        } else {
+            self.index.read_all()?
+        };
+
+        // 3. Create trace blob
+        let trace_content = SynthesizeSummary::format_trace(&entries);
+        let trace_blob = BlobContent::trace(&trace_content);
+        let trace_json = serde_json::to_vec(&WrappedBlob::wrap(trace_blob))?;
+        let trace_hash = self.objects.save(&trace_json)?;
+
+        // 4. Get or create roadmap blob
+        let roadmap_hash = self.get_or_create_roadmap()?;
+
+        // 5. Get current branch
+        let branch = self.head.get()?.unwrap_or_else(|| "main".to_string());
+
+        // 6. Get parent neural commit hash(es)
+        let parent_hashes = self.get_parent_hashes(&branch)?;
+
+        // 7. Create neural commit linked to existing git hash
+        let author = self
+            .git
+            .config_user_email()?
+            .unwrap_or_else(|| "unknown".to_string());
+
+        let neural_commit = if parent_hashes.len() > 1 {
+            NeuralCommit::new_with_parents(
+                git_hash,
+                parent_hashes,
+                &author,
+                &roadmap_hash,
+                &trace_hash,
+                summary,
+            )
+        } else {
+            NeuralCommit::new(
+                git_hash,
+                parent_hashes.into_iter().next(),
+                &author,
+                &roadmap_hash,
+                &trace_hash,
+                summary,
+            )
+        };
+
+        // 8. Save neural commit
+        let wrapped = WrappedNeuralCommit::wrap(neural_commit);
+        let commit_json = serde_json::to_vec(&wrapped)?;
+        let neural_hash = self.objects.save(&commit_json)?;
+
+        // 9. Update branch ref
+        self.refs.update(&branch, &neural_hash)?;
+
+        // 9.5. Index entries for full-text search (non-fatal)
+        if let Err(e) = crate::search::indexer::index_entries(&self.agit_dir, &entries) {
+            tracing::warn!("Failed to index entries for search: {}", e);
+        }
+
+        // 10. Clear index
+        if self.index.has_staged()? {
+            self.index.clear_staged()?;
+        } else {
+            self.index.clear()?;
+        }
+
+        Ok(CommitResult {
+            neural_hash,
+            git_hash: git_hash.to_string(),
+            git_commit_created: false,
+            is_memory_only: false,
+        })
     }
 }
