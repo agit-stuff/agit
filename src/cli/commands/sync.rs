@@ -41,11 +41,7 @@ pub fn execute(args: SyncArgs) -> Result<()> {
 }
 
 /// Sync after `git commit` - link pending thoughts to the new commit.
-fn sync_post_commit(
-    cwd: &std::path::Path,
-    agit_dir: &std::path::Path,
-    quiet: bool,
-) -> Result<()> {
+fn sync_post_commit(cwd: &std::path::Path, agit_dir: &std::path::Path, quiet: bool) -> Result<()> {
     // Read pending entries
     let index_store = FileIndexStore::new(agit_dir);
     let entries = if index_store.has_staged()? {
@@ -133,11 +129,11 @@ fn sync_post_checkout(
             match result {
                 EnsureSyncResult::ForkedToNew { new_branch, .. } => {
                     println!("[agit] Synced to new branch: '{}'", new_branch);
-                }
+                },
                 EnsureSyncResult::SwitchedToExisting { new_branch, .. } => {
                     println!("[agit] Restored context for branch: '{}'", new_branch);
-                }
-                EnsureSyncResult::AlreadyInSync { .. } => {}
+                },
+                EnsureSyncResult::AlreadyInSync { .. } => {},
             }
         }
     }
@@ -145,21 +141,13 @@ fn sync_post_checkout(
 }
 
 /// Sync after `git merge` - link thoughts to merge commit.
-fn sync_post_merge(
-    cwd: &std::path::Path,
-    agit_dir: &std::path::Path,
-    quiet: bool,
-) -> Result<()> {
+fn sync_post_merge(cwd: &std::path::Path, agit_dir: &std::path::Path, quiet: bool) -> Result<()> {
     // Similar to post-commit - link pending thoughts to the merge commit
     sync_post_commit(cwd, agit_dir, quiet)
 }
 
 /// Sync after `git rebase` or `git commit --amend` - reconcile rewritten commits.
-fn sync_post_rewrite(
-    cwd: &std::path::Path,
-    agit_dir: &std::path::Path,
-    quiet: bool,
-) -> Result<()> {
+fn sync_post_rewrite(cwd: &std::path::Path, agit_dir: &std::path::Path, quiet: bool) -> Result<()> {
     // Call ensure_sync which includes rewind/amend detection
     if let Some(result) = ensure_sync(cwd, agit_dir)? {
         if !quiet {
@@ -167,11 +155,11 @@ fn sync_post_rewrite(
             match result {
                 EnsureSyncResult::ForkedToNew { new_branch, .. } => {
                     println!("[agit] Reconciled to branch: '{}'", new_branch);
-                }
+                },
                 EnsureSyncResult::SwitchedToExisting { new_branch, .. } => {
                     println!("[agit] Reconciled to branch: '{}'", new_branch);
-                }
-                EnsureSyncResult::AlreadyInSync { .. } => {}
+                },
+                EnsureSyncResult::AlreadyInSync { .. } => {},
             }
         }
     }

@@ -83,11 +83,11 @@ pub fn execute(args: ResetArgs) -> Result<()> {
             io::stdin().read_line(&mut input)?;
 
             match input.trim().to_lowercase().as_str() {
-                "y" | "yes" => {}
+                "y" | "yes" => {},
                 _ => {
                     println!("Reset cancelled.");
                     return Ok(());
-                }
+                },
             }
         } else {
             // Non-interactive without --yes: require explicit flag

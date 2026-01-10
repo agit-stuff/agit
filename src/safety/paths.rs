@@ -116,10 +116,10 @@ mod tests {
         match result {
             Err(AgitError::PathOutsideRepository { path, .. }) => {
                 assert_eq!(path, "../outside.rs");
-            }
+            },
             Err(AgitError::FileNotFound { path, .. }) => {
                 assert_eq!(path, "../outside.rs");
-            }
+            },
             _ => panic!("Expected PathOutsideRepository or FileNotFound error"),
         }
     }

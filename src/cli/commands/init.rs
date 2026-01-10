@@ -7,9 +7,7 @@ use crate::cli::args::InitArgs;
 use crate::cli::commands::hooks;
 use crate::error::{AgitError, Result};
 use crate::storage::{FileHeadStore, FileIndexStore};
-use crate::templates::{
-    generate_versioned_protocol, AGIT_VERSION, TEMPLATE_FILES,
-};
+use crate::templates::{generate_versioned_protocol, AGIT_VERSION, TEMPLATE_FILES};
 
 /// The AGIT directory name.
 const AGIT_DIR: &str = ".agit";
@@ -210,7 +208,7 @@ fn update_template_files(project_dir: &Path) -> Result<bool> {
                     filename
                 );
                 continue;
-            }
+            },
         };
 
         // Find the closing tag (search from start_pos to avoid false matches)
@@ -222,7 +220,7 @@ fn update_template_files(project_dir: &Path) -> Result<bool> {
                     filename
                 );
                 continue;
-            }
+            },
         };
 
         // Build new content: before + versioned protocol + after
@@ -231,7 +229,10 @@ fn update_template_files(project_dir: &Path) -> Result<bool> {
         let new_content = format!("{}{}{}", before, versioned_protocol, after);
 
         fs::write(&path, new_content)?;
-        println!("✅ Updated AI Protocols in {} to v{}", filename, AGIT_VERSION);
+        println!(
+            "✅ Updated AI Protocols in {} to v{}",
+            filename, AGIT_VERSION
+        );
         any_updated = true;
     }
 
