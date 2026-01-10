@@ -166,7 +166,7 @@ mod tests {
             "Updated multiple files",
             vec![
                 Location::range("src/auth.rs".to_string(), 10, 20), // Not staged
-                Location::range("src/main.rs".to_string(), 5, 10), // Staged
+                Location::range("src/main.rs".to_string(), 5, 10),  // Staged
             ],
         )];
         let staged = vec!["src/main.rs".to_string()];

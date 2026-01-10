@@ -79,7 +79,10 @@ pub fn execute(args: CommitArgs) -> Result<()> {
                 } else {
                     pruned_entry.content.clone()
                 };
-                eprintln!("     \u{2514} {}: \"{}\"", pruned_entry.category, content_preview);
+                eprintln!(
+                    "     \u{2514} {}: \"{}\"",
+                    pruned_entry.category, content_preview
+                );
             }
             eprintln!();
             eprintln!(
