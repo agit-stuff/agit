@@ -13,12 +13,14 @@ mod branch_sync;
 mod commit_pipeline;
 mod migration;
 pub mod reconcile;
+mod sanitize;
 mod synthesizer;
 
 pub use branch_sync::*;
 pub use commit_pipeline::*;
 pub use migration::*;
 pub use reconcile::RewindResult;
+pub use sanitize::*;
 pub use synthesizer::*;
 
 /// Ensure AGIT is synced with the current Git branch.
