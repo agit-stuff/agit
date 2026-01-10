@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-01-10
+
+### Added
+- **Git hooks for automatic agit sync** - Automatically synchronize agit state with git operations
+  - Post-commit hook to sync neural context after commits
+  - Post-merge hook to sync after merges/pulls
+  - Pre-push hook validation
+- **`agit reset` command** - Clear pending thoughts from the staging area
+  - Useful for starting fresh without committing incomplete context
+- **`--update` flag for `agit init`** - Upgrade AI instruction protocols in-place
+  - Updates CLAUDE.md, .cursorrules, .windsurfrules to latest templates
+  - Preserves custom sections while upgrading system policies
+- **`link_to_existing_commit` pipeline method** - Link neural context to existing git commits
+  - Enables retroactive context attachment
+  - Useful for adding reasoning to commits made outside agit
+
+### Fixed
+- **Stricter file existence validation** - Require file existence in path validation to prevent cross-repo contamination
+  - Blocks attempts to reference files that don't exist in the repository
+
 ## [1.2.0] - 2025-01-10
 
 ### Added
@@ -147,7 +167,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - JSON-RPC input validation in MCP server
 - No shell command execution with user input
 
-[Unreleased]: https://github.com/agit-stuff/agit/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/agit-stuff/agit/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/agit-stuff/agit/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/agit-stuff/agit/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/agit-stuff/agit/compare/v1.0.0...v1.1.1
 [1.0.0]: https://github.com/agit-stuff/agit/compare/v0.3.0...v1.0.0
