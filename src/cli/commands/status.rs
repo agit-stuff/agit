@@ -3,11 +3,12 @@
 use git2::Repository;
 
 use crate::cli::args::StatusArgs;
-use crate::core::{detect_version, ensure_sync, EnsureSyncResult, StorageVersion};
+use crate::core::{detect_version, ensure_sync, reconcile, EnsureSyncResult, StorageVersion};
 use crate::error::{AgitError, Result};
 use crate::git::GitRepository;
 use crate::storage::{
-    FileHeadStore, FileIndexStore, FileRefStore, GitRefStore, HeadStore, IndexStore, RefStore,
+    FileHeadStore, FileIndexStore, FileObjectStore, FileRefStore, GitObjectStore, GitRefStore,
+    HeadStore, IndexStore, RefStore,
 };
 
 /// Execute the `status` command.
@@ -92,6 +93,54 @@ pub fn execute(args: StatusArgs) -> Result<()> {
     } else if staged_count == 0 {
         println!("No pending thoughts.");
         println!("  (use \"agit record\" to add thoughts)");
+    }
+
+    // Check for semantic conflicts (Safety Valve warning)
+    let pending_entries = index_store.read_all()?;
+    if !pending_entries.is_empty() {
+        let conflict_result = if matches!(version, StorageVersion::V2GitNative) {
+            let objects = GitObjectStore::new(&cwd);
+            let refs = GitRefStore::new(&cwd);
+            reconcile::check_for_conflicts(
+                &git_repo,
+                &objects,
+                &refs,
+                &agit_branch,
+                &pending_entries,
+            )?
+        } else {
+            let objects = FileObjectStore::new(&agit_dir);
+            let refs = FileRefStore::new(&agit_dir);
+            reconcile::check_for_conflicts(
+                &git_repo,
+                &objects,
+                &refs,
+                &agit_branch,
+                &pending_entries,
+            )?
+        };
+
+        if conflict_result.has_conflict {
+            println!();
+            println!("Warning: Context conflict detected!");
+            println!("External git commits touched files mentioned in your pending thoughts:");
+            for file in &conflict_result.conflicting_files {
+                println!("  - {}", file);
+            }
+            println!();
+            println!("  (use \"agit commit --force\" to proceed anyway)");
+            println!("  (or clear pending thoughts and start fresh)");
+        } else if let Some(ghost_info) = &conflict_result.ghost_info {
+            // Ghost commits exist but no conflict - just informational
+            if args.verbose {
+                println!();
+                println!(
+                    "Note: {} external git commit(s) detected since last agit commit.",
+                    ghost_info.git_hashes.len()
+                );
+                println!("  (no conflict with your pending thoughts)");
+            }
+        }
     }
 
     if args.verbose {

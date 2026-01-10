@@ -5,59 +5,43 @@
 /// This file is read by Claude Code as the project system prompt.
 pub const CLAUDE_MD_TEMPLATE: &str = r#"# SYSTEM POLICY: AGIT MEMORY
 
-You are connected to the Agit MCP server.
+<system_protocol>
 
-## LOGGING POLICY
+  <critical_rule id="BATCH_LOGGING">
+    <status>MANDATORY</status>
+    <trigger>TASK_COMPLETION</trigger>
+    <instruction>
+      You are operating under a STRICT SILENCE PROTOCOL.
+      1. You **MUST NOT** call `agit_log_step` during execution (thinking, editing).
+      2. You **MUST** buffer all user intents and reasoning internally.
+      3. **IMMEDIATELY** after completing code changes (and BEFORE final text), you **MUST** call `agit_log_step` exactly ONCE with the `batch` parameter.
+    </instruction>
+    <example_payload>
+      { "batch": [ { "role": "user", "...": "..." }, { "role": "ai", "...": "..." } ] }
+    </example_payload>
+  </critical_rule>
 
-To minimize user interruptions, work silently and log efficiently:
+  <critical_rule id="RETRIEVAL_VERIFICATION">
+    <status>REQUIRED</status>
+    <trigger>USER_QUERY_TYPE</trigger>
+    <instruction>
+      You **MUST NOT** rely on internal training data for project history.
+      1. If the user asks "Why", "When", "Who", or "Reason" regarding past decisions:
+         - You **MUST** call `agit_get_relevant_context` BEFORE generating an answer.
+         - Do not guess. If the tool returns no results, state that explicitly.
+    </instruction>
+  </critical_rule>
 
-1. **Do NOT log intermediate steps** - avoid calling agit_log_step during your work.
+  <critical_rule id="CONTEXT_INJECTION">
+    <status>BLOCKING</status>
+    <trigger>FILE_MODIFICATION</trigger>
+    <instruction>
+      You are **FORBIDDEN** from modifying existing files without context.
+      1. BEFORE writing to any non-empty file, you **MUST** call `agit_get_file_history(filepath=...)`.
+      2. Review the returned history to ensure your changes do not regress previous decisions.
+      3. **EXCEPTION:** Creating new files does not require history lookup.
+    </instruction>
+  </critical_rule>
 
-2. **At the END of each task**, call `agit_log_step` ONCE with a `batch` containing:
-   - The user's intent (role="user", category="intent")
-   - Your reasoning steps (role="ai", category="reasoning")
-   - Any errors encountered (role="ai", category="error")
-
-Example batch call:
-```json
-{
-  "batch": [
-    {"role": "user", "category": "intent", "content": "Fix the login bug"},
-    {"role": "ai", "category": "reasoning", "content": "Found null check missing in auth.rs line 42"},
-    {"role": "ai", "category": "reasoning", "content": "Added validation before token parse"}
-  ]
-}
-```
-
-## RETRIEVAL PROTOCOL
-
-Before making assumptions about past decisions, search the project history:
-
-- If the user asks "Why did we...", "What was the reason...", or similar questions about past decisions:
-  ALWAYS call `agit_get_relevant_context` with a relevant query BEFORE answering.
-
-- If you are unsure why a specific pattern or approach was used in existing code:
-  Call `agit_get_relevant_context` to find the original reasoning.
-
-- When modifying existing code that has non-obvious patterns:
-  Search for context first to understand the intent behind the current implementation.
-
-Example: `agit_get_relevant_context(query="authentication JWT")` to find why JWT was chosen.
-
-## AUTO-CONTEXT INJECTION
-
-When you start working on or reading a file, proactively gather context:
-
-- BEFORE modifying any file, call `agit_get_file_history` with the filepath to understand
-  past changes and reasoning behind the current implementation.
-
-- When you open a file and see patterns you don't understand, call `agit_get_file_history`
-  to discover WHY the code was written that way.
-
-- This is especially important for:
-  * Files with non-obvious patterns or workarounds
-  * Configuration files with specific settings
-  * Core modules that other code depends on
-
-Example: `agit_get_file_history(filepath="src/auth/jwt.rs")` before modifying authentication code.
+</system_protocol>
 "#;

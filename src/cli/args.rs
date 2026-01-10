@@ -144,6 +144,13 @@ pub struct CommitArgs {
     /// Skip interactive prompts (for memory-only commits)
     #[arg(short, long)]
     pub yes: bool,
+
+    /// Force commit even if semantic conflicts are detected
+    ///
+    /// By default, Agit blocks commits when external git changes conflict with
+    /// pending thoughts. Use this flag to proceed anyway.
+    #[arg(short, long)]
+    pub force: bool,
 }
 
 /// Arguments for the `server` command
