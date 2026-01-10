@@ -8,6 +8,7 @@ pub mod migrate;
 pub mod pull;
 pub mod push;
 pub mod record;
+pub mod reset;
 pub mod search;
 pub mod server;
 pub mod show;

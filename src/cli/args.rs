@@ -54,6 +54,9 @@ pub enum Commands {
 
     /// Search-related commands (rebuild index, query)
     Search(SearchArgs),
+
+    /// Reset (clear) pending thoughts and staged context
+    Reset(ResetArgs),
 }
 
 /// Arguments for the `init` command
@@ -249,4 +252,20 @@ pub struct SearchQueryArgs {
     /// Maximum number of results
     #[arg(short, long, default_value = "5")]
     pub limit: usize,
+}
+
+/// Arguments for the `reset` command
+#[derive(Parser, Debug)]
+pub struct ResetArgs {
+    /// Clear only pending thoughts, preserve staged context
+    #[arg(long)]
+    pub soft: bool,
+
+    /// Clear all: pending, staged, AND all branch stashes
+    #[arg(long)]
+    pub hard: bool,
+
+    /// Skip confirmation prompt
+    #[arg(short, long)]
+    pub yes: bool,
 }
