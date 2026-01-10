@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2025-01-10
+
+### Added
+- **Conscious Commit protocol** - Ensures Journal Entries (empty commits) are only created when explicitly intended
+  - New `--journal` flag (alias: `--allow-empty`) for `agit commit`
+  - TTY-aware Safety Interceptor: prompts for confirmation in interactive terminals
+  - Non-interactive environments require `--journal` flag (prevents CI hangs)
+  - Supports truly empty journal entries for decision checkpoints
+- **Strict scope enforcement** - Prevents cross-repository context contamination
+  - Path validation in `agit_log_step` blocks path traversal attacks
+  - Validates all `file_path` values are within repository root
+  - New `PathOutsideRepository` error with clear security messaging
+- **File/line location tracking** - Neural context entries can now reference specific code locations
+  - New `--file` and `--line` flags for `agit record`
+  - MCP tool `agit_log_step` supports `file_path` and `line_number` fields
+  - VS Code extension displays context at specific line numbers via CodeLens
+- **Per-branch index stashing** - Automatically stash/restore pending thoughts when switching branches
+  - Pending thoughts preserved per-branch in `.agit/stash/`
+  - Seamless context switching without losing work-in-progress reasoning
+- **Git amend detection** - Detects `git commit --amend` and migrates neural memory
+  - Rewrites parent references to maintain graph integrity
+  - Preserves reasoning history even when commit hashes change
+- **Merge/rebase conflict guard** - Blocks mutating Agit commands during git conflicts
+  - Prevents neural graph corruption during unfinished merge/rebase operations
+  - Clear error messages guide users to resolve conflicts first
+
+### Changed
+- Journal Entry commits now use `[Agit] Journal:` prefix instead of `[Agit] Context Update:`
+- V2 pipeline now creates empty git commits for memory-only changes (visible in `git log`)
+
 ## [1.1.1] - 2025-01-10
 
 ### Added
@@ -117,7 +147,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - JSON-RPC input validation in MCP server
 - No shell command execution with user input
 
-[Unreleased]: https://github.com/agit-stuff/agit/compare/v1.1.1...HEAD
+[Unreleased]: https://github.com/agit-stuff/agit/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/agit-stuff/agit/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/agit-stuff/agit/compare/v1.0.0...v1.1.1
 [1.0.0]: https://github.com/agit-stuff/agit/compare/v0.3.0...v1.0.0
 [0.3.0]: https://github.com/agit-stuff/agit/compare/v0.2.0...v0.3.0
