@@ -120,6 +120,18 @@ fn check_rewind(project_root: &Path, agit_dir: &Path, branch: &str) -> Result<()
             eprintln!("Warning: Git history rewound but no valid agit ancestor found.");
             eprintln!("  This branch's neural history may be orphaned.");
         },
+        RewindResult::MigratedAmend {
+            new_git_hash,
+            new_neural_hash,
+            ..
+        } => {
+            eprintln!("🔄 Detected git amend. Migrated memory to new hash.");
+            eprintln!("  New git hash: {}", &new_git_hash[..7.min(new_git_hash.len())]);
+            eprintln!(
+                "  New neural hash: {}",
+                &new_neural_hash[..7.min(new_neural_hash.len())]
+            );
+        },
         RewindResult::NoRewindNeeded => {
             // Normal case - do nothing
         },

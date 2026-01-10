@@ -314,6 +314,88 @@ pub fn check_for_conflicts<O: ObjectStore, R: RefStore>(
 // Backward Reconciliation (Rewind Detection)
 // =============================================================================
 
+/// Maximum time difference (in seconds) to consider two commits as the same for amend detection.
+const AMEND_TIMESTAMP_TOLERANCE_SECS: i64 = 60;
+
+/// Detect if a divergence is due to `git commit --amend` rather than a true rewind.
+///
+/// Amend detection heuristic: If Git HEAD and the neural commit's linked git commit have:
+/// - Same author email
+/// - Same message first line
+/// - Timestamp within 60 seconds
+///
+/// Then it's likely an amend, not a rewind.
+///
+/// # Arguments
+///
+/// * `git` - Git repository wrapper
+/// * `old_git_hash` - The git hash that the neural commit is linked to
+/// * `new_git_hash` - The current Git HEAD hash
+///
+/// # Returns
+///
+/// `true` if this looks like an amend, `false` otherwise.
+fn is_amend_replacement(git: &GitRepository, old_git_hash: &str, new_git_hash: &str) -> bool {
+    // Try to get metadata for both commits
+    let old_meta = match git.get_commit_metadata(old_git_hash) {
+        Ok(m) => m,
+        Err(_) => return false, // Can't access old commit - likely truly deleted
+    };
+
+    let new_meta = match git.get_commit_metadata(new_git_hash) {
+        Ok(m) => m,
+        Err(_) => return false,
+    };
+
+    // Check all three heuristics
+    let same_author = old_meta.author_email == new_meta.author_email;
+    let same_message = old_meta.message_first_line == new_meta.message_first_line;
+    let timestamp_close =
+        (old_meta.timestamp - new_meta.timestamp).abs() <= AMEND_TIMESTAMP_TOLERANCE_SECS;
+
+    same_author && same_message && timestamp_close
+}
+
+/// Migrate a neural commit to a new git hash (for amend support).
+///
+/// This creates a new neural commit object with the updated git_hash,
+/// stores it, and updates the branch ref to point to it.
+///
+/// # Arguments
+///
+/// * `objects` - Object store for loading/saving neural commits
+/// * `refs` - Ref store for updating branch heads
+/// * `branch` - The current branch name
+/// * `neural_hash` - The current neural commit hash
+/// * `new_git_hash` - The new git hash to point to
+///
+/// # Returns
+///
+/// The new neural commit hash after migration.
+fn migrate_neural_commit<O: ObjectStore, R: RefStore>(
+    objects: &O,
+    refs: &R,
+    branch: &str,
+    neural_hash: &str,
+    new_git_hash: &str,
+) -> Result<String> {
+    // Load the existing neural commit
+    let data = objects.load(neural_hash)?;
+    let mut wrapped: WrappedNeuralCommit = serde_json::from_slice(&data)?;
+
+    // Update the git_hash
+    wrapped.data.git_hash = new_git_hash.to_string();
+
+    // Re-serialize and save as new object
+    let new_data = serde_json::to_vec(&wrapped)?;
+    let new_neural_hash = objects.save(&new_data)?;
+
+    // Update the branch ref to point to the new neural commit
+    refs.update(branch, &new_neural_hash)?;
+
+    Ok(new_neural_hash)
+}
+
 /// Result of rewind reconciliation.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RewindResult {
@@ -333,6 +415,19 @@ pub enum RewindResult {
     NoValidAncestor {
         /// The current neural hash that has no valid git ancestor.
         neural_hash: String,
+    },
+    /// Detected git amend and migrated neural commit to new hash.
+    ///
+    /// This occurs when `git commit --amend` rewrote the commit that the neural
+    /// commit was attached to. The neural commit's git_hash is updated to point
+    /// to the new (amended) commit.
+    MigratedAmend {
+        /// The old git commit hash (before amend).
+        old_git_hash: String,
+        /// The new git commit hash (after amend).
+        new_git_hash: String,
+        /// The new neural commit hash (after migration).
+        new_neural_hash: String,
     },
 }
 
@@ -386,7 +481,21 @@ pub fn reconcile_rewind<O: ObjectStore, R: RefStore>(
         return Ok(RewindResult::NoRewindNeeded); // Still valid - git moved forward
     }
 
-    // 6. Git has rewound! Walk agit history backwards to find valid ancestor
+    // 6. Check for amend detection before treating as rewind
+    //    If the current git HEAD looks like an amended version of the old commit,
+    //    migrate the neural commit to the new git hash instead of rewinding.
+    if is_amend_replacement(git, agit_git_hash, &current_git_head) {
+        let old_git_hash = agit_git_hash.clone();
+        let new_neural_hash =
+            migrate_neural_commit(objects, refs, branch, &neural_hash, &current_git_head)?;
+        return Ok(RewindResult::MigratedAmend {
+            old_git_hash,
+            new_git_hash: current_git_head,
+            new_neural_hash,
+        });
+    }
+
+    // 7. Git has rewound! Walk agit history backwards to find valid ancestor
     find_valid_ancestor(git, objects, refs, branch, &neural_hash, &current_git_head)
 }
 
