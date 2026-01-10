@@ -42,7 +42,8 @@
       "Bash(cat:*)",
       "Bash(del /f \"d:\\\\Repos\\\\agit\\\\nul\")",
       "Bash(rm:*)",
-      "Bash(cmd.exe /c \"cargo build 2>&1\")"
+      "Bash(cmd.exe /c \"cargo build 2>&1\")",
+      "Bash(git rebase:*)"
     ]
   }
 }

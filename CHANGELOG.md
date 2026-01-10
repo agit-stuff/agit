@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.1.0] - 2025-01-10
+## [1.1.1] - 2025-01-10
 
 ### Added
 - **Semantic conflict detection (Safety Valve)** - Prevents accidental overwrites when external commits touch files mentioned in pending thoughts
@@ -117,8 +117,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - JSON-RPC input validation in MCP server
 - No shell command execution with user input
 
-[Unreleased]: https://github.com/agit-stuff/agit/compare/v1.1.0...HEAD
-[1.1.0]: https://github.com/agit-stuff/agit/compare/v1.0.0...v1.1.0
+[Unreleased]: https://github.com/agit-stuff/agit/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/agit-stuff/agit/compare/v1.0.0...v1.1.1
 [1.0.0]: https://github.com/agit-stuff/agit/compare/v0.3.0...v1.0.0
 [0.3.0]: https://github.com/agit-stuff/agit/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/agit-stuff/agit/releases/tag/v0.2.0
