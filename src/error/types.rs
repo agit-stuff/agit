@@ -113,6 +113,18 @@ pub enum AgitError {
         /// The repository root path.
         repo_root: String,
     },
+
+    /// File does not exist in the repository.
+    ///
+    /// This occurs when attempting to log context for a file path that
+    /// does not exist. Log reasoning after creating files, not before.
+    #[error("File '{path}' does not exist in repository ({repo_root}). Only existing files can be referenced in location metadata.")]
+    FileNotFound {
+        /// The path that was not found.
+        path: String,
+        /// The repository root path.
+        repo_root: String,
+    },
 }
 
 /// Errors specific to the content-addressable storage layer.

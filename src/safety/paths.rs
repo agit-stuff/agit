@@ -52,28 +52,16 @@ pub fn validate_path_is_internal(repo_root: &Path, target_path: &str) -> Result<
         repo_root.join(target_path)
     };
 
-    // Try to canonicalize (file must exist or parent must exist)
-    let canonical_target = if resolved.exists() {
-        resolved.canonicalize()
-    } else if let Some(parent) = resolved.parent() {
-        if parent.exists() {
-            // File doesn't exist yet, but parent does - canonicalize parent
-            parent
-                .canonicalize()
-                .map(|p| p.join(resolved.file_name().unwrap_or_default()))
-        } else {
-            Err(std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                "Parent directory does not exist",
-            ))
-        }
-    } else {
-        Err(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            "Cannot resolve path",
-        ))
+    // File must exist for validation - prevents cross-repo contamination
+    // when a parent directory exists but the file doesn't
+    if !resolved.exists() {
+        return Err(AgitError::FileNotFound {
+            path: target_path.to_string(),
+            repo_root: canonical_root.display().to_string(),
+        });
     }
-    .map_err(|e| {
+
+    let canonical_target = resolved.canonicalize().map_err(|e| {
         AgitError::Io(std::io::Error::new(
             std::io::ErrorKind::NotFound,
             format!("Cannot canonicalize target path '{}': {}", target_path, e),
@@ -123,10 +111,16 @@ mod tests {
         let result = validate_path_is_internal(temp.path(), "../outside.rs");
         assert!(result.is_err());
 
-        if let Err(AgitError::PathOutsideRepository { path, .. }) = result {
-            assert_eq!(path, "../outside.rs");
-        } else {
-            panic!("Expected PathOutsideRepository error");
+        // Either FileNotFound (file doesn't exist) or PathOutsideRepository
+        // (boundary violation) are valid - both block the invalid path
+        match result {
+            Err(AgitError::PathOutsideRepository { path, .. }) => {
+                assert_eq!(path, "../outside.rs");
+            }
+            Err(AgitError::FileNotFound { path, .. }) => {
+                assert_eq!(path, "../outside.rs");
+            }
+            _ => panic!("Expected PathOutsideRepository or FileNotFound error"),
         }
     }
 
@@ -155,14 +149,21 @@ mod tests {
     }
 
     #[test]
-    fn test_nonexistent_file_in_existing_parent() {
+    fn test_nonexistent_file_rejected() {
         let temp = TempDir::new().unwrap();
         let src_dir = temp.path().join("src");
         std::fs::create_dir_all(&src_dir).unwrap();
 
-        // File doesn't exist but parent does
+        // File doesn't exist - should be rejected even if parent exists
+        // This prevents cross-repo contamination when logging context
         let result = validate_path_is_internal(temp.path(), "src/new_file.rs");
-        assert!(result.is_ok());
+        assert!(result.is_err());
+
+        if let Err(AgitError::FileNotFound { path, .. }) = result {
+            assert_eq!(path, "src/new_file.rs");
+        } else {
+            panic!("Expected FileNotFound error");
+        }
     }
 
     #[test]
