@@ -16,6 +16,7 @@ agit captures the **reasoning context** (Why/How) alongside your **code changes*
 - **Zero Configuration** - Just run `agit init` and MCP is auto-configured
 - **MCP Auto-Discovery** - Generates `.mcp.json` and `.cursor/mcp.json` automatically
 - **Git Compatible** - Built on libgit2, works alongside your existing Git workflow
+- **Git Resilience** - Handles amend, rebase, and branch switching gracefully
 
 ## Installation
 
@@ -107,6 +108,7 @@ your-project/
 | `agit commit -m <msg>` | Create git commit + neural commit with context |
 | `agit log` | View commit history with summaries |
 | `agit show [hash]` | Show full context for a commit |
+| `agit search <query>` | Search past reasoning |
 | `agit server` | Start the MCP server |
 
 ## Philosophy
