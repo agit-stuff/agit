@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2025-01-10
+
+### Added
+- **Full-text search with Tantivy** - Fuzzy-search past reasoning logs instead of reading entire history
+  - New `src/search/` module with indexer and retriever
+  - Search index stored in `.agit/search_index/` (local-only)
+  - Automatic indexing during `agit commit`
+- **New CLI commands:**
+  - `agit search rebuild` - Rebuild search index from existing neural commits
+  - `agit search query <query>` - Query the search index (for testing)
+- **New MCP tools:**
+  - `agit_get_relevant_context` - Search past reasoning logs by keywords
+  - `agit_get_file_history` - Get history of changes to a specific file (auto-context injection)
+- **Enhanced instruction templates:**
+  - Added RETRIEVAL PROTOCOL section - instructs agents when to search history
+  - Added AUTO-CONTEXT INJECTION section - instructs agents to check file history before modifications
+
+### Dependencies
+- Added `tantivy = "0.22"` for full-text search
+
 ## [0.3.0] - 2025-01-10
 
 ### Added
@@ -74,6 +94,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - JSON-RPC input validation in MCP server
 - No shell command execution with user input
 
-[Unreleased]: https://github.com/agit-stuff/agit/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/agit-stuff/agit/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/agit-stuff/agit/compare/v0.3.0...v1.0.0
 [0.3.0]: https://github.com/agit-stuff/agit/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/agit-stuff/agit/releases/tag/v0.2.0

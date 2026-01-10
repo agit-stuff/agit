@@ -195,12 +195,31 @@ impl ToolCallResult {
 
 // Tool-specific parameter types
 
-/// Parameters for agit_log_step tool.
+/// A single log entry for batch logging.
 #[derive(Debug, Deserialize)]
-pub struct LogStepParams {
+pub struct LogEntry {
     pub role: String,
     pub category: String,
     pub content: String,
+}
+
+/// Parameters for agit_log_step tool.
+///
+/// Supports both single-entry mode (backward compatible) and batch mode.
+#[derive(Debug, Deserialize)]
+pub struct LogStepParams {
+    /// Single entry role (for backward compatibility)
+    #[serde(default)]
+    pub role: Option<String>,
+    /// Single entry category (for backward compatibility)
+    #[serde(default)]
+    pub category: Option<String>,
+    /// Single entry content (for backward compatibility)
+    #[serde(default)]
+    pub content: Option<String>,
+    /// Batch of entries (preferred for multiple logs)
+    #[serde(default)]
+    pub batch: Option<Vec<LogEntry>>,
 }
 
 /// Parameters for agit_get_context tool.

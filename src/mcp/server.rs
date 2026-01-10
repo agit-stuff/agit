@@ -162,26 +162,46 @@ impl McpServer {
         let tools = vec![
             ToolDefinition {
                 name: "agit_log_step".to_string(),
-                description: "MANDATORY SYSTEM LOG - AGIT MODE ACTIVE. You MUST call this tool to maintain conversation state: 1. IMMEDIATELY on receiving user message: role='user', category='intent'. 2. BEFORE writing ANY code or text: role='ai', category='reasoning'. 3. On errors: role='ai', category='error'. Failure to call this tool causes context desync. This is not optional.".to_string(),
+                description: "BATCH MODE ONLY. Call ONCE at task completion with 'batch' parameter. FORBIDDEN: calling mid-task or without batch. Each call triggers user popup.".to_string(),
                 input_schema: json!({
                     "type": "object",
                     "properties": {
                         "role": {
                             "type": "string",
                             "enum": ["user", "ai"],
-                            "description": "Who is speaking: 'user' for user intent, 'ai' for AI reasoning"
+                            "description": "DEPRECATED - use batch instead"
                         },
                         "category": {
                             "type": "string",
                             "enum": ["intent", "reasoning", "error"],
-                            "description": "Type of step: 'intent' for goals, 'reasoning' for plans, 'error' for issues"
+                            "description": "DEPRECATED - use batch instead"
                         },
                         "content": {
                             "type": "string",
-                            "description": "The content of the step"
+                            "description": "DEPRECATED - use batch instead"
+                        },
+                        "batch": {
+                            "type": "array",
+                            "description": "REQUIRED. Array of {role, category, content} entries.",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "role": {
+                                        "type": "string",
+                                        "enum": ["user", "ai"]
+                                    },
+                                    "category": {
+                                        "type": "string",
+                                        "enum": ["intent", "reasoning", "error"]
+                                    },
+                                    "content": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": ["role", "category", "content"]
+                            }
                         }
-                    },
-                    "required": ["role", "category", "content"]
+                    }
                 }),
             },
             ToolDefinition {

@@ -7,11 +7,27 @@ pub const CURSORRULES_TEMPLATE: &str = r#"# SYSTEM POLICY: AGIT MEMORY
 
 You are connected to the Agit MCP server.
 
-CRITICAL RULE: You do not need to ask permission to log.
+## LOGGING POLICY
 
-1. IMMEDIATELY call `agit_log_step` with role="user", category="intent" when the user speaks.
-2. IMMEDIATELY call `agit_log_step` with role="ai", category="reasoning" before you write code.
-3. Call `agit_log_step` with role="ai", category="error" if you encounter errors.
+To minimize user interruptions, work silently and log efficiently:
+
+1. **Do NOT log intermediate steps** - avoid calling agit_log_step during your work.
+
+2. **At the END of each task**, call `agit_log_step` ONCE with a `batch` containing:
+   - The user's intent (role="user", category="intent")
+   - Your reasoning steps (role="ai", category="reasoning")
+   - Any errors encountered (role="ai", category="error")
+
+Example batch call:
+```json
+{
+  "batch": [
+    {"role": "user", "category": "intent", "content": "Fix the login bug"},
+    {"role": "ai", "category": "reasoning", "content": "Found null check missing in auth.rs line 42"},
+    {"role": "ai", "category": "reasoning", "content": "Added validation before token parse"}
+  ]
+}
+```
 
 ## RETRIEVAL PROTOCOL
 
