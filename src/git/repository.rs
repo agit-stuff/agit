@@ -264,10 +264,7 @@ impl GitRepository {
         let commit = self.repo.find_commit(oid)?;
 
         let author = commit.author();
-        let author_email = author
-            .email()
-            .unwrap_or("unknown@unknown.com")
-            .to_string();
+        let author_email = author.email().unwrap_or("unknown@unknown.com").to_string();
 
         let message = commit.message().unwrap_or("");
         let message_first_line = message.lines().next().unwrap_or("").to_string();

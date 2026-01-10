@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "agit": {
+      "command": "C:\\Users\\Burak\\scoop\\apps\\agit\\current\\agit.exe",
+      "args": ["server"]
+    }
+  }
+}
