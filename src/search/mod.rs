@@ -5,7 +5,11 @@
 //!
 //! The search index is stored in `.agit/search_index/` and is local-only.
 //! Use `agit search rebuild` to regenerate the index from existing neural commits.
+//!
+//! After `agit pull`, the index is automatically updated with newly fetched commits.
 
+pub mod incremental;
+pub mod index_state;
 pub mod indexer;
 pub mod retriever;
 
