@@ -16,6 +16,7 @@ use crate::domain::{Category, IndexEntry, Role};
 #[cfg(test)]
 use crate::mcp::protocol::ToolContent;
 use crate::mcp::protocol::{LogEntry, LogStepParams, ToolCallResult};
+use crate::safety::validate_path_is_internal;
 use crate::storage::{FileIndexStore, IndexStore};
 
 /// Execute the agit_log_step tool.
@@ -78,11 +79,26 @@ fn execute_batch(agit_dir: &Path, entries: Vec<LogEntry>) -> ToolCallResult {
         return ToolCallResult::text("No entries to log");
     }
 
+    // Derive repo root from agit_dir
+    let repo_root = match agit_dir.parent() {
+        Some(root) => root,
+        None => return ToolCallResult::error("Cannot determine repository root"),
+    };
+
     let index_store = FileIndexStore::new(agit_dir);
     let mut logged = 0;
     let mut errors = Vec::new();
+    let mut rejected_paths = Vec::new();
 
     for entry in &entries {
+        // Validate file_path is within repository boundary
+        if let Some(ref file_path) = entry.file_path {
+            if let Err(e) = validate_path_is_internal(repo_root, file_path) {
+                rejected_paths.push(format!("{}: {}", file_path, e));
+                continue; // Skip this entry
+            }
+        }
+
         // Validate role
         let role = match entry.role.to_lowercase().as_str() {
             "user" => Role::User,
@@ -126,6 +142,27 @@ fn execute_batch(agit_dir: &Path, entries: Vec<LogEntry>) -> ToolCallResult {
         );
     }
 
+    // Build response
+    if !rejected_paths.is_empty() {
+        let rejection_msg = format!(
+            "⛔ {} entries rejected (outside repository scope):\n{}\n\nAgit is a single-repo tool. Use `cd` to switch to the correct repository before logging context for those files.",
+            rejected_paths.len(),
+            rejected_paths.join("\n")
+        );
+
+        if logged == 0 && errors.is_empty() {
+            return ToolCallResult::error(&rejection_msg);
+        } else {
+            // Some entries logged, but some rejected
+            let mut msg = format!("Logged {} entries.", logged);
+            if !errors.is_empty() {
+                msg.push_str(&format!(" {} errors: {}", errors.len(), errors.join("; ")));
+            }
+            msg.push_str(&format!("\n{}", rejection_msg));
+            return ToolCallResult::text(&msg);
+        }
+    }
+
     if errors.is_empty() {
         ToolCallResult::text(&format!("Logged {} entries", logged))
     } else if logged > 0 {
@@ -149,6 +186,22 @@ fn execute_single(
     file_path: Option<&str>,
     line_number: Option<u32>,
 ) -> ToolCallResult {
+    // Derive repo root from agit_dir
+    let repo_root = match agit_dir.parent() {
+        Some(root) => root,
+        None => return ToolCallResult::error("Cannot determine repository root"),
+    };
+
+    // Validate file_path is within repository boundary
+    if let Some(fp) = file_path {
+        if let Err(e) = validate_path_is_internal(repo_root, fp) {
+            return ToolCallResult::error(&format!(
+                "⛔ Path rejected: {}\n\nAgit is a single-repo tool. Use `cd` to switch to the correct repository before logging context for external files.",
+                e
+            ));
+        }
+    }
+
     // Validate role
     let role_enum = match role.to_lowercase().as_str() {
         "user" => Role::User,
