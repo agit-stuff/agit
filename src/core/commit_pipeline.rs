@@ -2,7 +2,7 @@
 //!
 //! Orchestrates the full commit workflow:
 //! 1. Acquire lock
-//! 1.5. Check for semantic conflicts (Safety Valve)
+//!    1.5. Check for semantic conflicts (Safety Valve)
 //! 2. Read index entries
 //! 3. Create trace blob
 //! 4. Create/get roadmap blob

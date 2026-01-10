@@ -100,7 +100,7 @@ pub fn detect_ghost_commits<O: ObjectStore, R: RefStore>(
             // No neural commits yet - everything is a "ghost commit"
             // This is normal for fresh repos, so we don't treat it as ghost commits
             return Ok(None);
-        }
+        },
     };
 
     // Load the neural commit to get its git_hash
@@ -157,7 +157,8 @@ pub fn extract_file_references(entries: &[IndexEntry]) -> Vec<String> {
 fn extract_file_patterns(content: &str, references: &mut Vec<String>) {
     // Split on whitespace and common delimiters
     for word in content.split(|c: char| c.is_whitespace() || c == ',' || c == ';' || c == ':') {
-        let word = word.trim_matches(|c: char| c == '\'' || c == '"' || c == '`' || c == '(' || c == ')');
+        let word =
+            word.trim_matches(|c: char| c == '\'' || c == '"' || c == '`' || c == '(' || c == ')');
 
         if word.is_empty() {
             continue;
@@ -187,10 +188,10 @@ fn looks_like_file_path(s: &str) -> bool {
 
     // Common file extensions to recognize
     let common_extensions = [
-        ".rs", ".ts", ".js", ".tsx", ".jsx", ".py", ".go", ".java", ".c", ".cpp", ".h",
-        ".hpp", ".cs", ".rb", ".php", ".swift", ".kt", ".scala", ".md", ".txt", ".json",
-        ".yaml", ".yml", ".toml", ".xml", ".html", ".css", ".scss", ".less", ".sql",
-        ".sh", ".bash", ".zsh", ".ps1", ".bat", ".cmd",
+        ".rs", ".ts", ".js", ".tsx", ".jsx", ".py", ".go", ".java", ".c", ".cpp", ".h", ".hpp",
+        ".cs", ".rb", ".php", ".swift", ".kt", ".scala", ".md", ".txt", ".json", ".yaml", ".yml",
+        ".toml", ".xml", ".html", ".css", ".scss", ".less", ".sql", ".sh", ".bash", ".zsh", ".ps1",
+        ".bat", ".cmd",
     ];
 
     if has_path_sep {
@@ -256,15 +257,14 @@ pub fn check_semantic_conflict(
                 .to_string();
 
             // Check for exact match or substring match (file mentioned in thought)
-            if changed_normalized == thought_normalized
+            let is_match = changed_normalized == thought_normalized
                 || changed_normalized.ends_with(&format!("/{}", thought_normalized))
                 || thought_normalized.ends_with(&format!("/{}", changed_normalized))
                 || changed_normalized.contains(&thought_normalized)
-                || thought_normalized.contains(&changed_normalized)
-            {
-                if !conflicting_files.contains(changed_file) {
-                    conflicting_files.push(changed_file.clone());
-                }
+                || thought_normalized.contains(&changed_normalized);
+
+            if is_match && !conflicting_files.contains(changed_file) {
+                conflicting_files.push(changed_file.clone());
             }
         }
     }
@@ -411,8 +411,8 @@ fn find_valid_ancestor<O: ObjectStore, R: RefStore>(
 
         // Check if this commit's git_hash is reachable from git HEAD
         // (handles both exact match and ancestor relationship)
-        let is_valid = commit.git_hash == git_head
-            || git.is_ancestor(&commit.git_hash, git_head)?;
+        let is_valid =
+            commit.git_hash == git_head || git.is_ancestor(&commit.git_hash, git_head)?;
 
         if is_valid {
             // Found valid ancestor - update ref to point here
@@ -434,7 +434,7 @@ fn find_valid_ancestor<O: ObjectStore, R: RefStore>(
                 return Ok(RewindResult::NoValidAncestor {
                     neural_hash: start_hash.to_string(),
                 });
-            }
+            },
         }
     }
 }
@@ -513,7 +513,9 @@ mod tests {
 
         let result = check_semantic_conflict(&ghost, &entries);
         assert!(result.has_conflict);
-        assert!(result.conflicting_files.contains(&"src/main.rs".to_string()));
+        assert!(result
+            .conflicting_files
+            .contains(&"src/main.rs".to_string()));
     }
 
     #[test]
