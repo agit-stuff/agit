@@ -9,7 +9,7 @@ use crate::cli::args::{SearchArgs, SearchCommands};
 use crate::core::{detect_version, StorageVersion};
 use crate::domain::{Category, IndexEntry, Role, WrappedBlob, WrappedNeuralCommit};
 use crate::error::{AgitError, Result};
-use crate::search::{indexer, retriever};
+use crate::search::{index_state, indexer, retriever};
 use crate::storage::{
     FileHeadStore, FileObjectStore, FileRefStore, GitObjectStore, GitRefStore, HeadStore,
     ObjectStore, RefStore,
@@ -100,6 +100,9 @@ fn rebuild_index(repo_path: &Path, agit_dir: &Path) -> Result<()> {
         );
     }
 
+    // Save indexed commits state for incremental updates
+    index_state::save_indexed_commits(agit_dir, &visited_commits)?;
+
     // Hint about current branch
     if !branches.contains(&current_branch) && !branches.is_empty() {
         println!(
@@ -112,7 +115,9 @@ fn rebuild_index(repo_path: &Path, agit_dir: &Path) -> Result<()> {
 }
 
 /// Walk the commit chain and extract entries from trace blobs.
-fn collect_entries_from_chain(
+///
+/// Stops when it reaches a commit in `stop_at` (used for incremental indexing).
+pub fn collect_entries_from_chain(
     repo_path: &Path,
     agit_dir: &Path,
     is_v2: bool,
@@ -164,7 +169,7 @@ fn collect_entries_from_chain(
 /// Parse trace content back into IndexEntry objects.
 ///
 /// Trace format: `[HH:MM:SS] role/category: content`
-fn parse_trace_content(
+pub fn parse_trace_content(
     trace: &str,
     commit_timestamp: chrono::DateTime<chrono::Utc>,
 ) -> Vec<IndexEntry> {

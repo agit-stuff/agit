@@ -219,6 +219,100 @@ impl GitRepository {
             Ok(None)
         }
     }
+
+    /// Get the list of files changed between two commits.
+    ///
+    /// This computes the diff between the trees of two commits and returns
+    /// the paths of all files that were added, modified, or deleted.
+    ///
+    /// # Arguments
+    ///
+    /// * `from_hash` - The starting commit hash (older commit)
+    /// * `to_hash` - The ending commit hash (newer commit)
+    ///
+    /// # Returns
+    ///
+    /// A vector of file paths that changed between the two commits.
+    pub fn diff_commits(&self, from_hash: &str, to_hash: &str) -> Result<Vec<String>> {
+        let from_oid = git2::Oid::from_str(from_hash)?;
+        let to_oid = git2::Oid::from_str(to_hash)?;
+
+        let from_commit = self.repo.find_commit(from_oid)?;
+        let to_commit = self.repo.find_commit(to_oid)?;
+
+        let from_tree = from_commit.tree()?;
+        let to_tree = to_commit.tree()?;
+
+        let diff = self
+            .repo
+            .diff_tree_to_tree(Some(&from_tree), Some(&to_tree), None)?;
+
+        let mut changed_files = Vec::new();
+
+        for delta in diff.deltas() {
+            // Get the new file path (or old path for deletions)
+            if let Some(path) = delta.new_file().path().or_else(|| delta.old_file().path()) {
+                if let Some(path_str) = path.to_str() {
+                    changed_files.push(path_str.to_string());
+                }
+            }
+        }
+
+        Ok(changed_files)
+    }
+
+    /// Check if `ancestor` is reachable from `descendant` (i.e., ancestor is in history).
+    ///
+    /// This is used to detect "dangling head" scenarios where Agit points to a
+    /// commit that no longer exists in Git's history (e.g., after `git reset --hard`).
+    ///
+    /// # Arguments
+    ///
+    /// * `ancestor` - The commit hash to check if it's an ancestor
+    /// * `descendant` - The commit hash to check if ancestor is reachable from
+    ///
+    /// # Returns
+    ///
+    /// `true` if ancestor is reachable from descendant, `false` otherwise.
+    pub fn is_ancestor(&self, ancestor: &str, descendant: &str) -> Result<bool> {
+        let ancestor_oid = git2::Oid::from_str(ancestor)?;
+        let descendant_oid = git2::Oid::from_str(descendant)?;
+
+        // graph_descendant_of returns true if `descendant` is a descendant of `ancestor`
+        Ok(self
+            .repo
+            .graph_descendant_of(descendant_oid, ancestor_oid)?)
+    }
+
+    /// Get the list of commits between two commit hashes (exclusive of from, inclusive of to).
+    ///
+    /// This walks the commit history from `to_hash` back to `from_hash` and returns
+    /// all commit hashes in between (not including `from_hash`).
+    ///
+    /// # Arguments
+    ///
+    /// * `from_hash` - The older commit (exclusive - not included in result)
+    /// * `to_hash` - The newer commit (inclusive - included in result)
+    ///
+    /// # Returns
+    ///
+    /// A vector of commit hashes from newest to oldest.
+    pub fn commits_between(&self, from_hash: &str, to_hash: &str) -> Result<Vec<String>> {
+        let from_oid = git2::Oid::from_str(from_hash)?;
+        let to_oid = git2::Oid::from_str(to_hash)?;
+
+        let mut revwalk = self.repo.revwalk()?;
+        revwalk.push(to_oid)?;
+        revwalk.hide(from_oid)?;
+
+        let mut commits = Vec::new();
+        for oid_result in revwalk {
+            let oid = oid_result?;
+            commits.push(oid.to_string());
+        }
+
+        Ok(commits)
+    }
 }
 
 #[cfg(test)]

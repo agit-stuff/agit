@@ -1,11 +1,16 @@
 //! Implementation of the `agit pull` command.
 //!
 //! Pulls agit refs (refs/agit/*) from a remote repository.
+//! After fetching, automatically updates the search index with new commits.
+
+use std::collections::HashMap;
+use std::path::Path;
 
 use git2::{Cred, FetchOptions, RemoteCallbacks, Repository};
 
 use crate::cli::args::PullArgs;
 use crate::error::{AgitError, Result};
+use crate::search::incremental;
 
 /// Execute the `pull` command.
 pub fn execute(args: PullArgs) -> Result<()> {
@@ -19,6 +24,9 @@ pub fn execute(args: PullArgs) -> Result<()> {
 
     // Open the git repository
     let repo = Repository::discover(&cwd)?;
+
+    // Capture refs BEFORE fetch (for incremental indexing)
+    let refs_before = capture_agit_refs(&repo)?;
 
     // Find the remote
     let mut remote = repo.find_remote(&args.remote).map_err(|e| {
@@ -105,5 +113,57 @@ pub fn execute(args: PullArgs) -> Result<()> {
         }
     }
 
+    // Capture refs AFTER fetch
+    let refs_after = capture_agit_refs(&repo)?;
+
+    // Auto-update search index (non-fatal)
+    index_after_pull(&cwd, &agit_dir, &refs_before, &refs_after);
+
     Ok(())
+}
+
+/// Capture all agit refs as a map of branch name to commit hash.
+fn capture_agit_refs(repo: &Repository) -> Result<HashMap<String, String>> {
+    let mut refs = HashMap::new();
+
+    if let Ok(references) = repo.references_glob("refs/agit/heads/*") {
+        for reference in references.filter_map(|r| r.ok()) {
+            if let (Some(name), Some(target)) = (reference.name(), reference.target()) {
+                if let Some(branch) = name.strip_prefix("refs/agit/heads/") {
+                    refs.insert(branch.to_string(), target.to_string());
+                }
+            }
+        }
+    }
+
+    Ok(refs)
+}
+
+/// Update the search index after pulling new commits.
+fn index_after_pull(
+    repo_path: &Path,
+    agit_dir: &Path,
+    refs_before: &HashMap<String, String>,
+    refs_after: &HashMap<String, String>,
+) {
+    // Check if any refs changed
+    if refs_before == refs_after {
+        return;
+    }
+
+    match incremental::index_new_commits(repo_path, agit_dir, refs_before, refs_after) {
+        Ok((count, was_full_rebuild)) => {
+            if count > 0 {
+                if was_full_rebuild {
+                    println!("\nRebuilt search index ({} entries)", count);
+                } else {
+                    println!("\nIndexed {} new search entries", count);
+                }
+            }
+        },
+        Err(e) => {
+            eprintln!("\nWarning: Failed to update search index: {}", e);
+            eprintln!("Run 'agit search rebuild' to rebuild manually.");
+        },
+    }
 }

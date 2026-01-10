@@ -149,7 +149,7 @@ pub fn execute(args: CommitArgs) -> Result<()> {
     let result = if is_v2 {
         let mut pipeline =
             GitNativeCommitPipeline::new(agit_dir.clone(), GitRepository::open(&cwd)?)?;
-        pipeline.execute(&message, &final_summary)?
+        pipeline.execute(&message, &final_summary, false)?
     } else {
         let object_store = FileObjectStore::new(&agit_dir);
         let ref_store = FileRefStore::new(&agit_dir);
@@ -162,7 +162,7 @@ pub fn execute(args: CommitArgs) -> Result<()> {
             head_store,
             index_store.clone(),
         );
-        pipeline.execute(&message, &final_summary)?
+        pipeline.execute(&message, &final_summary, false)?
     };
 
     // Show commit result

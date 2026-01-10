@@ -79,6 +79,17 @@ pub enum AgitError {
         "Nothing to commit. Record thoughts with 'agit record' or stage code with 'agit add'."
     )]
     NothingToCommit,
+
+    /// Semantic conflict detected between external commits and pending thoughts.
+    ///
+    /// This occurs when external git commits (made outside of Agit) modified files
+    /// that are mentioned in pending thoughts. Committing would create "hallucinated"
+    /// context that contradicts the actual codebase state.
+    #[error("Context conflict: external changes touched files in your pending thoughts.\nConflicting files: {}\nUse --force to commit anyway, or clear pending thoughts with 'agit reset'.", files.join(", "))]
+    SemanticConflict {
+        /// Files that were both modified externally and mentioned in pending thoughts.
+        files: Vec<String>,
+    },
 }
 
 /// Errors specific to the content-addressable storage layer.
