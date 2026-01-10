@@ -160,10 +160,10 @@ fn index_after_pull(
                     println!("\nIndexed {} new search entries", count);
                 }
             }
-        }
+        },
         Err(e) => {
             eprintln!("\nWarning: Failed to update search index: {}", e);
             eprintln!("Run 'agit search rebuild' to rebuild manually.");
-        }
+        },
     }
 }

@@ -81,28 +81,22 @@ fn check_rewind(project_root: &Path, agit_dir: &Path, branch: &str) -> Result<()
     };
 
     match rewind_result {
-        RewindResult::Rewound {
-            orphaned_count, ..
-        } => {
-            eprintln!(
-                "Warning: Git history rewound. Snapped agit HEAD back to valid ancestor."
-            );
+        RewindResult::Rewound { orphaned_count, .. } => {
+            eprintln!("Warning: Git history rewound. Snapped agit HEAD back to valid ancestor.");
             if orphaned_count > 0 {
                 eprintln!(
                     "  {} orphaned neural commit(s) left as objects (not deleted).",
                     orphaned_count
                 );
             }
-        }
+        },
         RewindResult::NoValidAncestor { .. } => {
-            eprintln!(
-                "Warning: Git history rewound but no valid agit ancestor found."
-            );
+            eprintln!("Warning: Git history rewound but no valid agit ancestor found.");
             eprintln!("  This branch's neural history may be orphaned.");
-        }
+        },
         RewindResult::NoRewindNeeded => {
             // Normal case - do nothing
-        }
+        },
     }
 
     Ok(())

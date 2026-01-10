@@ -279,7 +279,9 @@ impl GitRepository {
         let descendant_oid = git2::Oid::from_str(descendant)?;
 
         // graph_descendant_of returns true if `descendant` is a descendant of `ancestor`
-        Ok(self.repo.graph_descendant_of(descendant_oid, ancestor_oid)?)
+        Ok(self
+            .repo
+            .graph_descendant_of(descendant_oid, ancestor_oid)?)
     }
 
     /// Get the list of commits between two commit hashes (exclusive of from, inclusive of to).

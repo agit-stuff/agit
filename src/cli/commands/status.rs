@@ -101,11 +101,23 @@ pub fn execute(args: StatusArgs) -> Result<()> {
         let conflict_result = if matches!(version, StorageVersion::V2GitNative) {
             let objects = GitObjectStore::new(&cwd);
             let refs = GitRefStore::new(&cwd);
-            reconcile::check_for_conflicts(&git_repo, &objects, &refs, &agit_branch, &pending_entries)?
+            reconcile::check_for_conflicts(
+                &git_repo,
+                &objects,
+                &refs,
+                &agit_branch,
+                &pending_entries,
+            )?
         } else {
             let objects = FileObjectStore::new(&agit_dir);
             let refs = FileRefStore::new(&agit_dir);
-            reconcile::check_for_conflicts(&git_repo, &objects, &refs, &agit_branch, &pending_entries)?
+            reconcile::check_for_conflicts(
+                &git_repo,
+                &objects,
+                &refs,
+                &agit_branch,
+                &pending_entries,
+            )?
         };
 
         if conflict_result.has_conflict {
