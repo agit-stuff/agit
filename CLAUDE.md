@@ -1,6 +1,6 @@
 # SYSTEM POLICY: AGIT MEMORY
 
-<system_protocol>
+<system_protocol version="1.3.0">
 
   <critical_rule id="BATCH_LOGGING">
     <status>MANDATORY</status>
