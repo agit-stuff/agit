@@ -70,6 +70,10 @@ pub struct InitArgs {
     /// Skip updating .gitignore
     #[arg(long)]
     pub no_gitignore: bool,
+
+    /// Update AI instruction files to the latest version without destroying custom settings
+    #[arg(short, long)]
+    pub update: bool,
 }
 
 /// Arguments for the `record` command

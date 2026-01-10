@@ -6,7 +6,9 @@ use std::path::Path;
 use crate::cli::args::InitArgs;
 use crate::error::{AgitError, Result};
 use crate::storage::{FileHeadStore, FileIndexStore};
-use crate::templates::TEMPLATE_FILES;
+use crate::templates::{
+    generate_versioned_protocol, AGIT_VERSION, TEMPLATE_FILES,
+};
 
 /// The AGIT directory name.
 const AGIT_DIR: &str = ".agit";
@@ -29,14 +31,28 @@ pub fn execute(args: InitArgs) -> Result<()> {
     let cwd = std::env::current_dir()?;
     let agit_dir = cwd.join(AGIT_DIR);
 
-    // Check if already initialized
-    if agit_dir.exists() && !args.force {
-        return Err(AgitError::AlreadyInitialized { path: agit_dir });
-    }
-
     // Check if this is a git repository
     if !cwd.join(".git").exists() {
         return Err(AgitError::NotGitRepository);
+    }
+
+    // Handle --update mode: only update template files, don't reinitialize
+    if args.update {
+        if !agit_dir.exists() {
+            println!("⚠️  AGIT is not initialized. Run `agit init` first.");
+            return Ok(());
+        }
+
+        let updated = update_template_files(&cwd)?;
+        if !updated {
+            println!("No template files were updated. Ensure CLAUDE.md or .cursorrules exists.");
+        }
+        return Ok(());
+    }
+
+    // Check if already initialized (for normal init, not update mode)
+    if agit_dir.exists() && !args.force {
+        return Err(AgitError::AlreadyInitialized { path: agit_dir });
     }
 
     // Create .agit directory structure
@@ -109,6 +125,12 @@ fn create_agit_structure(agit_dir: &Path) -> Result<()> {
 /// Marker to detect if AGIT policy is already present.
 const AGIT_POLICY_MARKER: &str = "# SYSTEM POLICY: AGIT MEMORY";
 
+/// Start marker for the system protocol block (matches both versioned and unversioned).
+const PROTOCOL_START_MARKER: &str = "<system_protocol";
+
+/// End marker for the system protocol block.
+const PROTOCOL_END_MARKER: &str = "</system_protocol>";
+
 /// Generate AI instruction template files.
 /// If the file exists, appends AGIT policy to preserve user content.
 fn generate_template_files(project_dir: &Path) -> Result<()> {
@@ -140,6 +162,66 @@ fn generate_template_files(project_dir: &Path) -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Update AI instruction template files with the latest system protocol.
+///
+/// This function finds and replaces the `<system_protocol>...</system_protocol>` block
+/// in existing files, preserving any user-defined content outside the markers.
+///
+/// Returns `Ok(true)` if at least one file was updated, `Ok(false)` if no files
+/// were found or had the markers.
+fn update_template_files(project_dir: &Path) -> Result<bool> {
+    let versioned_protocol = generate_versioned_protocol();
+    let mut any_updated = false;
+
+    // Template files to update
+    let template_files = ["CLAUDE.md", ".cursorrules"];
+
+    for filename in template_files {
+        let path = project_dir.join(filename);
+
+        if !path.exists() {
+            continue;
+        }
+
+        let existing = fs::read_to_string(&path)?;
+
+        // Find the protocol block markers
+        let start_pos = match existing.find(PROTOCOL_START_MARKER) {
+            Some(pos) => pos,
+            None => {
+                println!(
+                    "⚠️  Could not find Agit block in {}. Please run `agit init --force` to reset the file completely.",
+                    filename
+                );
+                continue;
+            }
+        };
+
+        // Find the closing tag (search from start_pos to avoid false matches)
+        let end_pos = match existing[start_pos..].find(PROTOCOL_END_MARKER) {
+            Some(pos) => start_pos + pos + PROTOCOL_END_MARKER.len(),
+            None => {
+                println!(
+                    "⚠️  Could not find closing </system_protocol> in {}. Please run `agit init --force` to reset the file completely.",
+                    filename
+                );
+                continue;
+            }
+        };
+
+        // Build new content: before + versioned protocol + after
+        let before = &existing[..start_pos];
+        let after = &existing[end_pos..];
+        let new_content = format!("{}{}{}", before, versioned_protocol, after);
+
+        fs::write(&path, new_content)?;
+        println!("✅ Updated AI Protocols in {} to v{}", filename, AGIT_VERSION);
+        any_updated = true;
+    }
+
+    Ok(any_updated)
 }
 
 /// Get the absolute path to the agit executable.
@@ -401,5 +483,141 @@ mod tests {
         let content2 = fs::read_to_string(temp.path().join(".gitignore")).unwrap();
 
         assert_eq!(content1, content2);
+    }
+
+    #[test]
+    fn test_update_template_files_replaces_protocol_block() {
+        use crate::templates::AGIT_VERSION;
+
+        let temp = setup_git_repo();
+
+        // Create a CLAUDE.md with old (unversioned) protocol and custom content
+        let old_content = r#"# My Custom Rules
+
+Some custom instructions here.
+
+# SYSTEM POLICY: AGIT MEMORY
+
+<system_protocol>
+
+  <critical_rule id="OLD_RULE">
+    <instruction>Old instruction content</instruction>
+  </critical_rule>
+
+</system_protocol>
+
+# More Custom Rules
+
+Additional custom content below.
+"#;
+        fs::write(temp.path().join("CLAUDE.md"), old_content).unwrap();
+
+        // Run the update
+        let updated = update_template_files(temp.path()).unwrap();
+        assert!(updated, "Should have updated at least one file");
+
+        // Verify the result
+        let new_content = fs::read_to_string(temp.path().join("CLAUDE.md")).unwrap();
+
+        // Custom content should be preserved
+        assert!(new_content.contains("# My Custom Rules"));
+        assert!(new_content.contains("Some custom instructions here."));
+        assert!(new_content.contains("# More Custom Rules"));
+        assert!(new_content.contains("Additional custom content below."));
+
+        // Old protocol content should be replaced
+        assert!(!new_content.contains("OLD_RULE"));
+        assert!(!new_content.contains("Old instruction content"));
+
+        // New versioned protocol should be present
+        assert!(new_content.contains(&format!("<system_protocol version=\"{}\">", AGIT_VERSION)));
+        assert!(new_content.contains("BATCH_LOGGING"));
+        assert!(new_content.contains("</system_protocol>"));
+    }
+
+    #[test]
+    fn test_update_template_files_handles_versioned_protocol() {
+        use crate::templates::AGIT_VERSION;
+
+        let temp = setup_git_repo();
+
+        // Create a CLAUDE.md with already versioned protocol
+        let old_content = r#"# SYSTEM POLICY: AGIT MEMORY
+
+<system_protocol version="0.0.1">
+
+  <critical_rule id="OLD_VERSIONED_RULE">
+    <instruction>Some old versioned instruction</instruction>
+  </critical_rule>
+
+</system_protocol>
+"#;
+        fs::write(temp.path().join("CLAUDE.md"), old_content).unwrap();
+
+        // Run the update
+        let updated = update_template_files(temp.path()).unwrap();
+        assert!(updated);
+
+        // Verify the version was updated
+        let new_content = fs::read_to_string(temp.path().join("CLAUDE.md")).unwrap();
+        assert!(!new_content.contains("version=\"0.0.1\""));
+        assert!(new_content.contains(&format!("version=\"{}\"", AGIT_VERSION)));
+        assert!(!new_content.contains("OLD_VERSIONED_RULE"));
+    }
+
+    #[test]
+    fn test_update_template_files_no_marker_returns_false() {
+        let temp = setup_git_repo();
+
+        // Create a CLAUDE.md without any protocol block
+        let content = "# My Project\n\nJust some regular markdown content.\n";
+        fs::write(temp.path().join("CLAUDE.md"), content).unwrap();
+
+        // Run the update - should not update anything
+        let updated = update_template_files(temp.path()).unwrap();
+        assert!(!updated, "Should return false when no protocol block found");
+
+        // Content should remain unchanged
+        let after_content = fs::read_to_string(temp.path().join("CLAUDE.md")).unwrap();
+        assert_eq!(content, after_content);
+    }
+
+    #[test]
+    fn test_update_template_files_no_files_returns_false() {
+        let temp = setup_git_repo();
+
+        // No template files exist
+        let updated = update_template_files(temp.path()).unwrap();
+        assert!(!updated, "Should return false when no template files exist");
+    }
+
+    #[test]
+    fn test_update_template_files_updates_cursorrules() {
+        use crate::templates::AGIT_VERSION;
+
+        let temp = setup_git_repo();
+
+        // Create a .cursorrules with old protocol
+        let old_content = r#"# SYSTEM POLICY: AGIT MEMORY
+
+<system_protocol>
+
+  <critical_rule id="CURSOR_OLD">
+    <instruction>Old cursor rule</instruction>
+  </critical_rule>
+
+</system_protocol>
+"#;
+        fs::write(temp.path().join(".cursorrules"), old_content).unwrap();
+
+        // Run the update
+        let updated = update_template_files(temp.path()).unwrap();
+        assert!(updated);
+
+        // Verify .cursorrules was updated
+        let new_content = fs::read_to_string(temp.path().join(".cursorrules")).unwrap();
+        assert!(new_content.contains(&format!("<system_protocol version=\"{}\">", AGIT_VERSION)));
+        assert!(!new_content.contains("CURSOR_OLD"));
+        assert!(new_content.contains("BATCH_LOGGING"));
     }
 }
