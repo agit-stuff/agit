@@ -90,6 +90,16 @@ pub enum AgitError {
         /// Files that were both modified externally and mentioned in pending thoughts.
         files: Vec<String>,
     },
+
+    /// A Git merge or rebase is in progress.
+    ///
+    /// Agit cannot safely modify the neural graph while Git is in a conflicted
+    /// state. The user must resolve the conflicts and complete the operation first.
+    #[error("⚠️  {operation} in progress. Please resolve conflicts and finish the {operation} before adding neural memories.")]
+    ConflictedState {
+        /// The type of Git operation in progress (e.g., "Merge", "Rebase").
+        operation: String,
+    },
 }
 
 /// Errors specific to the content-addressable storage layer.

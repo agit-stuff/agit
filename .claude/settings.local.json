@@ -43,7 +43,17 @@
       "Bash(del /f \"d:\\\\Repos\\\\agit\\\\nul\")",
       "Bash(rm:*)",
       "Bash(cmd.exe /c \"cargo build 2>&1\")",
-      "Bash(git rebase:*)"
+      "Bash(git rebase:*)",
+      "mcp__agit__agit_get_file_history",
+      "mcp__agit__agit_log_step",
+      "Bash(npm install:*)",
+      "Bash(npm run compile:*)",
+      "Bash(printf:*)",
+      "Bash(agit log --oneline -n 3)",
+      "Bash(agit status)",
+      "Bash(agit add:*)",
+      "Bash(pushd:*)",
+      "Bash(popd:*)"
     ]
   }
 }

@@ -5,7 +5,7 @@
 
 use std::path::Path;
 
-use crate::error::Result;
+use crate::error::{AgitError, Result};
 use crate::git::GitRepository;
 use crate::storage::{FileObjectStore, FileRefStore, GitObjectStore, GitRefStore};
 
@@ -56,6 +56,32 @@ pub fn ensure_sync(project_root: &Path, agit_dir: &Path) -> Result<Option<Ensure
     }
 }
 
+/// Check if Git is in a conflicted state (merge or rebase in progress).
+///
+/// This should be called at the start of mutating commands (record, add, commit)
+/// to prevent graph corruption during Git operations.
+///
+/// # Arguments
+///
+/// * `git` - Git repository wrapper
+///
+/// # Returns
+///
+/// `Ok(())` if not in a conflicted state, `Err(AgitError::ConflictedState)` otherwise.
+pub fn check_conflicted_state(git: &GitRepository) -> Result<()> {
+    if git.is_merging()? {
+        return Err(AgitError::ConflictedState {
+            operation: "Merge".to_string(),
+        });
+    }
+    if git.is_rebasing()? {
+        return Err(AgitError::ConflictedState {
+            operation: "Rebase".to_string(),
+        });
+    }
+    Ok(())
+}
+
 /// Check if Git has rewound and snap AGIT back to a valid ancestor.
 ///
 /// This handles the "dangling head" scenario where the user runs `git reset --hard`
@@ -93,6 +119,21 @@ fn check_rewind(project_root: &Path, agit_dir: &Path, branch: &str) -> Result<()
         RewindResult::NoValidAncestor { .. } => {
             eprintln!("Warning: Git history rewound but no valid agit ancestor found.");
             eprintln!("  This branch's neural history may be orphaned.");
+        },
+        RewindResult::MigratedAmend {
+            new_git_hash,
+            new_neural_hash,
+            ..
+        } => {
+            eprintln!("🔄 Detected git amend. Migrated memory to new hash.");
+            eprintln!(
+                "  New git hash: {}",
+                &new_git_hash[..7.min(new_git_hash.len())]
+            );
+            eprintln!(
+                "  New neural hash: {}",
+                &new_neural_hash[..7.min(new_neural_hash.len())]
+            );
         },
         RewindResult::NoRewindNeeded => {
             // Normal case - do nothing

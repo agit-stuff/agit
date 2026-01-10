@@ -31,3 +31,12 @@ Thumbs.db
 # Benchmarks
 /target/criterion/
 
+
+# AGIT - AI-Native Git Wrapper (V2 Git-native storage)
+# All local state - shared data is in refs/agit/* and Git ODB
+.agit/
+
+# MCP configs (shared with team)
+!.mcp.json
+!.cursor/mcp.json
+!.vscode/mcp.json

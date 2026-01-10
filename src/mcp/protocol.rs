@@ -201,6 +201,12 @@ pub struct LogEntry {
     pub role: String,
     pub category: String,
     pub content: String,
+    /// Optional file path this entry relates to.
+    #[serde(default)]
+    pub file_path: Option<String>,
+    /// Optional line number in the file.
+    #[serde(default)]
+    pub line_number: Option<u32>,
 }
 
 /// Parameters for agit_log_step tool.
@@ -217,6 +223,12 @@ pub struct LogStepParams {
     /// Single entry content (for backward compatibility)
     #[serde(default)]
     pub content: Option<String>,
+    /// Optional file path for single entry mode.
+    #[serde(default)]
+    pub file_path: Option<String>,
+    /// Optional line number for single entry mode.
+    #[serde(default)]
+    pub line_number: Option<u32>,
     /// Batch of entries (preferred for multiple logs)
     #[serde(default)]
     pub batch: Option<Vec<LogEntry>>,

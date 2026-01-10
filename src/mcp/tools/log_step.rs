@@ -57,7 +57,14 @@ pub fn execute(agit_dir: &Path, arguments: Option<Value>) -> ToolCallResult {
         (params.role, params.category, params.content)
     {
         // Single mode (backward compatible)
-        execute_single(agit_dir, &role, &category, &content)
+        execute_single(
+            agit_dir,
+            &role,
+            &category,
+            &content,
+            params.file_path.as_deref(),
+            params.line_number,
+        )
     } else {
         ToolCallResult::error(
             "Invalid parameters: provide either 'batch' array or 'role', 'category', 'content'",
@@ -97,8 +104,14 @@ fn execute_batch(agit_dir: &Path, entries: Vec<LogEntry>) -> ToolCallResult {
             },
         };
 
-        // Create and append entry
-        let index_entry = IndexEntry::new(role, category, &entry.content);
+        // Create and append entry with optional file/line location
+        let index_entry = IndexEntry::with_location(
+            role,
+            category,
+            &entry.content,
+            entry.file_path.clone(),
+            entry.line_number,
+        );
         if let Err(e) = index_store.append(&index_entry) {
             errors.push(format!("Failed to log: {}", e));
             continue;
@@ -128,7 +141,14 @@ fn execute_batch(agit_dir: &Path, entries: Vec<LogEntry>) -> ToolCallResult {
 }
 
 /// Execute single entry logging (backward compatible).
-fn execute_single(agit_dir: &Path, role: &str, category: &str, content: &str) -> ToolCallResult {
+fn execute_single(
+    agit_dir: &Path,
+    role: &str,
+    category: &str,
+    content: &str,
+    file_path: Option<&str>,
+    line_number: Option<u32>,
+) -> ToolCallResult {
     // Validate role
     let role_enum = match role.to_lowercase().as_str() {
         "user" => Role::User,
@@ -154,8 +174,14 @@ fn execute_single(agit_dir: &Path, role: &str, category: &str, content: &str) ->
         },
     };
 
-    // Create and append entry
-    let entry = IndexEntry::new(role_enum, category_enum, content);
+    // Create and append entry with optional file/line location
+    let entry = IndexEntry::with_location(
+        role_enum,
+        category_enum,
+        content,
+        file_path.map(|s| s.to_string()),
+        line_number,
+    );
     let index_store = FileIndexStore::new(agit_dir);
 
     if let Err(e) = index_store.append(&entry) {

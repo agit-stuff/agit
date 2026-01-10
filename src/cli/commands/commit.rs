@@ -6,8 +6,8 @@ use git2::Repository;
 
 use crate::cli::args::CommitArgs;
 use crate::core::{
-    detect_version, ensure_sync, ChangeState, CommitPipeline, EnsureSyncResult,
-    GitNativeCommitPipeline, StorageVersion, SynthesizeSummary,
+    check_conflicted_state, detect_version, ensure_sync, ChangeState, CommitPipeline,
+    EnsureSyncResult, GitNativeCommitPipeline, StorageVersion, SynthesizeSummary,
 };
 use crate::error::{AgitError, Result};
 use crate::git::GitRepository;
@@ -22,6 +22,10 @@ pub fn execute(args: CommitArgs) -> Result<()> {
     if !agit_dir.exists() {
         return Err(AgitError::NotInitialized);
     }
+
+    // Check for merge/rebase in progress
+    let git_repo = GitRepository::open(&cwd)?;
+    check_conflicted_state(&git_repo)?;
 
     // Ensure branch sync
     if let Some(result) = ensure_sync(&cwd, &agit_dir)? {

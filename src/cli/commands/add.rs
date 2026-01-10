@@ -1,7 +1,7 @@
 //! Implementation of the `agit add` command.
 
 use crate::cli::args::AddArgs;
-use crate::core::{ensure_sync, EnsureSyncResult};
+use crate::core::{check_conflicted_state, ensure_sync, EnsureSyncResult};
 use crate::error::{AgitError, Result};
 use crate::git::GitRepository;
 use crate::storage::{FileIndexStore, IndexStore};
@@ -14,6 +14,10 @@ pub fn execute(args: AddArgs) -> Result<()> {
     if !agit_dir.exists() {
         return Err(AgitError::NotInitialized);
     }
+
+    // Check for merge/rebase in progress
+    let git_repo = GitRepository::open(&cwd)?;
+    check_conflicted_state(&git_repo)?;
 
     // Ensure branch sync
     if let Some(result) = ensure_sync(&cwd, &agit_dir)? {
@@ -28,7 +32,6 @@ pub fn execute(args: AddArgs) -> Result<()> {
         }
     }
 
-    let git_repo = GitRepository::open(&cwd)?;
     let pathspecs: Vec<&str> = args.pathspec.iter().map(|s| s.as_str()).collect();
     let count = git_repo.stage_files(&pathspecs)?;
 
