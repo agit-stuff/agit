@@ -10,7 +10,7 @@
 class Agit < Formula
   desc "AI-native Git wrapper for capturing context alongside code"
   homepage "https://github.com/agit-stuff/agit"
-  version "1.2.0"
+  version "1.2.1"
   license any_of: ["MIT", "Apache-2.0"]
 
   on_macos do
