@@ -100,6 +100,19 @@ pub enum AgitError {
         /// The type of Git operation in progress (e.g., "Merge", "Rebase").
         operation: String,
     },
+
+    /// Path is outside the repository boundary.
+    ///
+    /// This occurs when attempting to log context for a file that is not
+    /// within the current repository root. Agit is a single-repo tool and
+    /// requires switching directories to log context for other repositories.
+    #[error("⛔ SECURITY VIOLATION: Path '{path}' is outside repository scope ({repo_root}). Agit is a single-repo tool. Switch to the correct directory to log context for external files.")]
+    PathOutsideRepository {
+        /// The path that was outside the repository.
+        path: String,
+        /// The repository root path.
+        repo_root: String,
+    },
 }
 
 /// Errors specific to the content-addressable storage layer.
