@@ -1,6 +1,6 @@
 //! Implementation of the `agit commit` command.
 
-use std::io::{self, Write};
+use std::io::{self, IsTerminal, Write};
 
 use git2::Repository;
 
@@ -12,6 +12,11 @@ use crate::core::{
 use crate::error::{AgitError, Result};
 use crate::git::GitRepository;
 use crate::storage::{FileHeadStore, FileIndexStore, FileObjectStore, FileRefStore, IndexStore};
+
+/// Check if stdin is connected to an interactive terminal.
+fn is_interactive() -> bool {
+    io::stdin().is_terminal()
+}
 
 /// Execute the `commit` command.
 pub fn execute(args: CommitArgs) -> Result<()> {
@@ -52,7 +57,7 @@ pub fn execute(args: CommitArgs) -> Result<()> {
         pending_entries.clone()
     };
 
-    if entries.is_empty() && !args.amend {
+    if entries.is_empty() && !args.amend && !args.journal {
         println!("No thoughts recorded in staging area.");
         println!(
             "Use 'agit record' to add thoughts, or the MCP server will log them automatically."
@@ -98,52 +103,57 @@ pub fn execute(args: CommitArgs) -> Result<()> {
         pipeline.detect_change_state()?
     };
 
-    // Handle Memory-Only state with Intent Check prompt
+    // Handle Memory-Only state with Conscious Commit protocol
     if change_state == ChangeState::MemoryOnly {
-        if args.yes {
-            // Skip prompt in non-interactive mode
-            println!("[Agit] Creating plan commit...");
-        } else {
+        if args.journal || args.yes {
+            // Case 1: User explicitly passed --journal flag (or --yes for backward compat)
+            // ✅ PROCEED - This is an intentional decision
+            println!("[Agit] Creating Journal Entry (memory-only commit)...");
+        } else if is_interactive() {
+            // Case 2: Interactive terminal without flag
+            // 🛑 INTERCEPT - Prompt for confirmation
             println!();
-            println!("Pending thoughts found, but no code changes detected.");
+            println!("⚠️  No code changes detected. This will be saved as a 'Journal Entry'");
+            println!("    (Empty Commit) to preserve the decision history.");
             println!();
-            println!("What would you like to do?");
-            println!("  [1] Commit as Plan (Save only reasoning to history)");
-            println!("  [2] Discard Thoughts (Clear pending thoughts)");
-            println!("  [3] Cancel");
-            println!();
-
-            print!("Enter choice [1-3]: ");
+            print!("Are you sure? [y/N]: ");
             io::stdout().flush()?;
 
             let mut input = String::new();
             io::stdin().read_line(&mut input)?;
 
-            match input.trim() {
-                "1" => {
-                    // Proceed with memory-only commit
+            match input.trim().to_lowercase().as_str() {
+                "y" | "yes" => {
+                    // User confirmed - treat as --journal
                     println!();
-                    println!("[Agit] Creating plan commit...");
-                },
-                "2" => {
-                    // Discard thoughts
-                    index_store.clear()?;
-                    println!();
-                    println!("Thoughts discarded. Index cleared.");
-                    return Ok(());
-                },
-                "3" | "" => {
-                    // Cancel
-                    println!();
-                    println!("Commit cancelled.");
-                    return Ok(());
+                    println!("[Agit] Creating Journal Entry (memory-only commit)...");
                 },
                 _ => {
+                    // User declined or invalid input
                     println!();
-                    println!("Invalid choice. Commit cancelled.");
+                    println!("Commit cancelled.");
+                    println!(
+                        "Tip: Use 'agit commit --journal' to explicitly create a Journal Entry."
+                    );
                     return Ok(());
                 },
             }
+        } else {
+            // Case 3: Non-interactive (script/agent) without --journal flag
+            // ❌ ABORT - Require explicit flag
+            return Err(AgitError::InvalidArgument(
+                "No code changes detected. To save a pure thought/decision, use `agit commit --journal`.".to_string()
+            ));
+        }
+    }
+
+    // Handle NoChanges state (no code AND no memory)
+    if change_state == ChangeState::NoChanges {
+        if args.journal {
+            // User explicitly wants a truly empty journal entry
+            println!("[Agit] Creating empty Journal Entry (decision checkpoint)...");
+        } else {
+            return Err(AgitError::NothingToCommit);
         }
     }
 
