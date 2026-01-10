@@ -77,6 +77,17 @@ pub fn execute(args: StatusArgs) -> Result<()> {
         println!("  (AGIT branch: {} - out of sync!)", agit_branch);
     }
 
+    // Check for merge/rebase in progress
+    if git_repo.is_merging()? {
+        println!();
+        println!("⚠️  Merge in progress. Agit is in read-only mode.");
+        println!("   Resolve conflicts and run 'git merge --continue' first.");
+    } else if git_repo.is_rebasing()? {
+        println!();
+        println!("⚠️  Rebase in progress. Agit is in read-only mode.");
+        println!("   Resolve conflicts and run 'git rebase --continue' first.");
+    }
+
     println!();
 
     if staged_count > 0 {

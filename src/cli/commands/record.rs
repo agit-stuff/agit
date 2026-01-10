@@ -3,9 +3,10 @@
 use std::path::Path;
 
 use crate::cli::args::RecordArgs;
-use crate::core::{ensure_sync, EnsureSyncResult};
+use crate::core::{check_conflicted_state, ensure_sync, EnsureSyncResult};
 use crate::domain::{Category, IndexEntry, Role};
 use crate::error::{AgitError, Result};
+use crate::git::GitRepository;
 use crate::storage::{FileIndexStore, IndexStore};
 
 /// Execute the `record` command.
@@ -17,6 +18,10 @@ pub fn execute(args: RecordArgs) -> Result<()> {
     if !agit_dir.exists() {
         return Err(AgitError::NotInitialized);
     }
+
+    // Check for merge/rebase in progress
+    let git_repo = GitRepository::open(&cwd)?;
+    check_conflicted_state(&git_repo)?;
 
     // Ensure branch sync
     if let Some(result) = ensure_sync(&cwd, &agit_dir)? {

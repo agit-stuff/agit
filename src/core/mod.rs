@@ -5,7 +5,7 @@
 
 use std::path::Path;
 
-use crate::error::Result;
+use crate::error::{AgitError, Result};
 use crate::git::GitRepository;
 use crate::storage::{FileObjectStore, FileRefStore, GitObjectStore, GitRefStore};
 
@@ -54,6 +54,32 @@ pub fn ensure_sync(project_root: &Path, agit_dir: &Path) -> Result<Option<Ensure
         EnsureSyncResult::AlreadyInSync { .. } => Ok(None),
         _ => Ok(Some(result)),
     }
+}
+
+/// Check if Git is in a conflicted state (merge or rebase in progress).
+///
+/// This should be called at the start of mutating commands (record, add, commit)
+/// to prevent graph corruption during Git operations.
+///
+/// # Arguments
+///
+/// * `git` - Git repository wrapper
+///
+/// # Returns
+///
+/// `Ok(())` if not in a conflicted state, `Err(AgitError::ConflictedState)` otherwise.
+pub fn check_conflicted_state(git: &GitRepository) -> Result<()> {
+    if git.is_merging()? {
+        return Err(AgitError::ConflictedState {
+            operation: "Merge".to_string(),
+        });
+    }
+    if git.is_rebasing()? {
+        return Err(AgitError::ConflictedState {
+            operation: "Rebase".to_string(),
+        });
+    }
+    Ok(())
 }
 
 /// Check if Git has rewound and snap AGIT back to a valid ancestor.

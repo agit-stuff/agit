@@ -206,6 +206,22 @@ impl GitRepository {
         Ok(merge_head_path.exists())
     }
 
+    /// Check if we're currently in a rebase state.
+    ///
+    /// This is detected by the presence of .git/rebase-merge/ or .git/rebase-apply/ directories.
+    pub fn is_rebasing(&self) -> Result<bool> {
+        let rebase_merge_path = self.repo.path().join("rebase-merge");
+        let rebase_apply_path = self.repo.path().join("rebase-apply");
+        Ok(rebase_merge_path.exists() || rebase_apply_path.exists())
+    }
+
+    /// Check if we're in any conflicted state (merge or rebase in progress).
+    ///
+    /// When in a conflicted state, Agit commands that modify the graph should be blocked.
+    pub fn is_in_conflicted_state(&self) -> Result<bool> {
+        Ok(self.is_merging()? || self.is_rebasing()?)
+    }
+
     /// Get the MERGE_HEAD hash if in merge state.
     ///
     /// Returns None if not in merge state.
