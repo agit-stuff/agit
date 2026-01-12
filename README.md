@@ -2,8 +2,7 @@
   <img src="assets/agit-logo-text.svg" alt="AGIT Logo" width="200">
 </p>
 
-# agit - AI-Native Git Wrapper
-
+# agit - Code Context Management
 **[Documentation](https://agit-ccm.com) · [GitHub](https://github.com/agit-stuff/agit)**
 
 agit captures the **reasoning context** (Why/How) alongside your **code changes** (What). It creates a "Neural Graph" parallel to Git's commit graph, giving you and your team a complete history of not just what changed, but *why* it changed and *how* the decision was made.
