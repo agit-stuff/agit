@@ -6,7 +6,7 @@
 //! Supports both single-entry mode (backward compatible) and batch mode
 //! for efficiency in environments with tool authorization popups.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 use tracing::{debug, error, warn};
@@ -60,6 +60,44 @@ pub fn execute(agit_dir: &Path, arguments: Option<Value>) -> ToolCallResult {
         return ToolCallResult::error("AGIT not initialized. Run 'agit init' first.");
     }
 
+    // Validate repo_path if specified
+    if let Some(ref target_repo) = params.repo_path {
+        let target_path = PathBuf::from(target_repo);
+        let current_repo = match agit_dir.parent() {
+            Some(root) => root,
+            None => return ToolCallResult::error("Cannot determine repository root"),
+        };
+
+        // Canonicalize both paths for comparison
+        let canonical_current = match current_repo.canonicalize() {
+            Ok(p) => p,
+            Err(e) => {
+                return ToolCallResult::error(&format!(
+                    "Failed to resolve current repository: {}",
+                    e
+                ));
+            },
+        };
+        let canonical_target = match target_path.canonicalize() {
+            Ok(p) => p,
+            Err(_) => {
+                return ToolCallResult::error(&format!(
+                    "Target repository '{}' does not exist or is not accessible",
+                    target_repo
+                ));
+            },
+        };
+
+        if canonical_current != canonical_target {
+            return ToolCallResult::error(&format!(
+                "Repository mismatch: entries target '{}' but current repo is '{}'. \
+                 Use `cd` to switch to the target repository, or omit repo_path to log to current repo.",
+                target_repo,
+                canonical_current.display()
+            ));
+        }
+    }
+
     // Ensure branch sync (derive project root from agit_dir)
     if let Some(project_root) = agit_dir.parent() {
         if let Err(e) = ensure_sync(project_root, agit_dir) {
@@ -108,19 +146,25 @@ fn execute_batch(agit_dir: &Path, entries: Vec<LogEntry>) -> ToolCallResult {
     let mut logged = 0;
     let mut errors = Vec::new();
     let mut rejected_paths = Vec::new();
+    let mut rejected_entries = 0;
 
     for entry in &entries {
         // Collect and validate locations (new format or legacy)
         let locations: Vec<Location> = if let Some(ref locs) = entry.locations {
             // New locations array format
             let mut valid_locs = Vec::new();
+            let original_count = locs.len();
             for loc in locs {
                 if let Err(e) = validate_path_is_internal(repo_root, &loc.file) {
                     rejected_paths.push(format!("{}: {}", loc.file, e));
-                    // Continue to check other locations, don't skip entire entry
                 } else {
                     valid_locs.push(convert_location(loc));
                 }
+            }
+            // If entry had locations but ALL were invalid, skip the entire entry
+            if original_count > 0 && valid_locs.is_empty() {
+                rejected_entries += 1;
+                continue;
             }
             valid_locs
         } else if let Some(ref file_path) = entry.file_path {
@@ -173,18 +217,40 @@ fn execute_batch(agit_dir: &Path, entries: Vec<LogEntry>) -> ToolCallResult {
     }
 
     // Build response
-    if !rejected_paths.is_empty() {
+    if rejected_entries > 0 || !rejected_paths.is_empty() {
+        let mut rejection_parts = Vec::new();
+
+        if rejected_entries > 0 {
+            rejection_parts.push(format!(
+                "⛔ {} {} rejected (all locations outside repository scope)",
+                rejected_entries,
+                if rejected_entries == 1 { "entry" } else { "entries" }
+            ));
+        }
+
+        if !rejected_paths.is_empty() {
+            rejection_parts.push(format!(
+                "⚠️ {} location{} skipped:\n{}",
+                rejected_paths.len(),
+                if rejected_paths.len() == 1 { "" } else { "s" },
+                rejected_paths.join("\n")
+            ));
+        }
+
         let rejection_msg = format!(
-            "⛔ {} entries rejected (outside repository scope):\n{}\n\nAgit is a single-repo tool. Use `cd` to switch to the correct repository before logging context for those files.",
-            rejected_paths.len(),
-            rejected_paths.join("\n")
+            "{}\n\nAgit is a single-repo tool. Use `cd` to switch to the correct repository before logging context for those files.",
+            rejection_parts.join("\n")
         );
 
         if logged == 0 && errors.is_empty() {
             return ToolCallResult::error(&rejection_msg);
         } else {
             // Some entries logged, but some rejected
-            let mut msg = format!("Logged {} entries.", logged);
+            let mut msg = format!(
+                "Logged {} {}.",
+                logged,
+                if logged == 1 { "entry" } else { "entries" }
+            );
             if !errors.is_empty() {
                 msg.push_str(&format!(" {} errors: {}", errors.len(), errors.join("; ")));
             }
@@ -194,11 +260,16 @@ fn execute_batch(agit_dir: &Path, entries: Vec<LogEntry>) -> ToolCallResult {
     }
 
     if errors.is_empty() {
-        ToolCallResult::text(&format!("Logged {} entries", logged))
+        ToolCallResult::text(&format!(
+            "Logged {} {}",
+            logged,
+            if logged == 1 { "entry" } else { "entries" }
+        ))
     } else if logged > 0 {
         ToolCallResult::text(&format!(
-            "Logged {} entries with {} errors: {}",
+            "Logged {} {} with {} errors: {}",
             logged,
+            if logged == 1 { "entry" } else { "entries" },
             errors.len(),
             errors.join("; ")
         ))

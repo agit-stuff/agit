@@ -252,6 +252,11 @@ pub struct LogStepParams {
     /// (Deprecated) Use `locations` instead. Optional line number.
     #[serde(default)]
     pub line_number: Option<u32>,
+    /// Optional target repository path. If specified, agit validates that this
+    /// matches the current repository before logging. Helps prevent cross-repo
+    /// contamination when AI agents work across multiple repos.
+    #[serde(default)]
+    pub repo_path: Option<String>,
     /// Batch of entries (preferred for multiple logs)
     #[serde(default)]
     pub batch: Option<Vec<LogEntry>>,

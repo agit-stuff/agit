@@ -42,8 +42,12 @@ pub fn execute(args: InitArgs) -> Result<()> {
             return Ok(());
         }
 
-        let updated = update_template_files(&cwd)?;
-        if !updated {
+        let result = update_template_files(&cwd)?;
+        if result.updated_count > 0 {
+            println!("\nRestart your AI assistant to apply the updated AGIT memory protocol.");
+        } else if result.up_to_date_count > 0 {
+            println!("Already up to date.");
+        } else {
             println!("No template files were updated. Ensure CLAUDE.md or .cursorrules exists.");
         }
         return Ok(());
@@ -143,6 +147,14 @@ const PROTOCOL_START_MARKER: &str = "<system_protocol";
 /// End marker for the system protocol block.
 const PROTOCOL_END_MARKER: &str = "</system_protocol>";
 
+/// Result of updating template files.
+struct UpdateResult {
+    /// Number of files that were updated to a new version.
+    updated_count: usize,
+    /// Number of files that were already up to date.
+    up_to_date_count: usize,
+}
+
 /// Generate AI instruction template files.
 /// If the file exists, appends AGIT policy to preserve user content.
 fn generate_template_files(project_dir: &Path) -> Result<()> {
@@ -181,11 +193,13 @@ fn generate_template_files(project_dir: &Path) -> Result<()> {
 /// This function finds and replaces the `<system_protocol>...</system_protocol>` block
 /// in existing files, preserving any user-defined content outside the markers.
 ///
-/// Returns `Ok(true)` if at least one file was updated, `Ok(false)` if no files
-/// were found or had the markers.
-fn update_template_files(project_dir: &Path) -> Result<bool> {
+/// Returns an `UpdateResult` indicating how many files were updated vs already up-to-date.
+fn update_template_files(project_dir: &Path) -> Result<UpdateResult> {
     let versioned_protocol = generate_versioned_protocol();
-    let mut any_updated = false;
+    let mut result = UpdateResult {
+        updated_count: 0,
+        up_to_date_count: 0,
+    };
 
     // Template files to update
     let template_files = ["CLAUDE.md", ".cursorrules"];
@@ -223,6 +237,19 @@ fn update_template_files(project_dir: &Path) -> Result<bool> {
             },
         };
 
+        // Check if already up-to-date by extracting existing version
+        let protocol_block = &existing[start_pos..end_pos];
+        if let Some(version_start) = protocol_block.find("version=\"") {
+            let version_str_start = version_start + 9; // len of 'version="'
+            if let Some(version_end) = protocol_block[version_str_start..].find('"') {
+                let existing_version = &protocol_block[version_str_start..version_str_start + version_end];
+                if existing_version == AGIT_VERSION {
+                    result.up_to_date_count += 1;
+                    continue;
+                }
+            }
+        }
+
         // Build new content: before + versioned protocol + after
         let before = &existing[..start_pos];
         let after = &existing[end_pos..];
@@ -233,10 +260,10 @@ fn update_template_files(project_dir: &Path) -> Result<bool> {
             "✅ Updated AI Protocols in {} to v{}",
             filename, AGIT_VERSION
         );
-        any_updated = true;
+        result.updated_count += 1;
     }
 
-    Ok(any_updated)
+    Ok(result)
 }
 
 /// Get the absolute path to the agit executable.
@@ -528,8 +555,8 @@ Additional custom content below.
         fs::write(temp.path().join("CLAUDE.md"), old_content).unwrap();
 
         // Run the update
-        let updated = update_template_files(temp.path()).unwrap();
-        assert!(updated, "Should have updated at least one file");
+        let result = update_template_files(temp.path()).unwrap();
+        assert!(result.updated_count > 0, "Should have updated at least one file");
 
         // Verify the result
         let new_content = fs::read_to_string(temp.path().join("CLAUDE.md")).unwrap();
@@ -570,8 +597,8 @@ Additional custom content below.
         fs::write(temp.path().join("CLAUDE.md"), old_content).unwrap();
 
         // Run the update
-        let updated = update_template_files(temp.path()).unwrap();
-        assert!(updated);
+        let result = update_template_files(temp.path()).unwrap();
+        assert!(result.updated_count > 0);
 
         // Verify the version was updated
         let new_content = fs::read_to_string(temp.path().join("CLAUDE.md")).unwrap();
@@ -581,7 +608,7 @@ Additional custom content below.
     }
 
     #[test]
-    fn test_update_template_files_no_marker_returns_false() {
+    fn test_update_template_files_no_marker_returns_zero() {
         let temp = setup_git_repo();
 
         // Create a CLAUDE.md without any protocol block
@@ -589,8 +616,9 @@ Additional custom content below.
         fs::write(temp.path().join("CLAUDE.md"), content).unwrap();
 
         // Run the update - should not update anything
-        let updated = update_template_files(temp.path()).unwrap();
-        assert!(!updated, "Should return false when no protocol block found");
+        let result = update_template_files(temp.path()).unwrap();
+        assert_eq!(result.updated_count, 0, "Should not update when no protocol block found");
+        assert_eq!(result.up_to_date_count, 0, "Should not be up-to-date when no protocol block found");
 
         // Content should remain unchanged
         let after_content = fs::read_to_string(temp.path().join("CLAUDE.md")).unwrap();
@@ -598,12 +626,45 @@ Additional custom content below.
     }
 
     #[test]
-    fn test_update_template_files_no_files_returns_false() {
+    fn test_update_template_files_no_files_returns_zero() {
         let temp = setup_git_repo();
 
         // No template files exist
-        let updated = update_template_files(temp.path()).unwrap();
-        assert!(!updated, "Should return false when no template files exist");
+        let result = update_template_files(temp.path()).unwrap();
+        assert_eq!(result.updated_count, 0, "Should not update when no template files exist");
+        assert_eq!(result.up_to_date_count, 0, "Should not be up-to-date when no template files exist");
+    }
+
+    #[test]
+    fn test_update_template_files_already_up_to_date() {
+        use crate::templates::AGIT_VERSION;
+
+        let temp = setup_git_repo();
+
+        // Create a CLAUDE.md with current version protocol
+        let current_content = format!(
+            r#"# SYSTEM POLICY: AGIT MEMORY
+
+<system_protocol version="{}">
+
+  <critical_rule id="BATCH_LOGGING">
+    <instruction>Some instruction</instruction>
+  </critical_rule>
+
+</system_protocol>
+"#,
+            AGIT_VERSION
+        );
+        fs::write(temp.path().join("CLAUDE.md"), &current_content).unwrap();
+
+        // Run the update - should detect as already up-to-date
+        let result = update_template_files(temp.path()).unwrap();
+        assert_eq!(result.updated_count, 0, "Should not update when already current version");
+        assert_eq!(result.up_to_date_count, 1, "Should count as up-to-date");
+
+        // Content should remain unchanged
+        let after_content = fs::read_to_string(temp.path().join("CLAUDE.md")).unwrap();
+        assert_eq!(current_content, after_content);
     }
 
     #[test]
@@ -626,8 +687,8 @@ Additional custom content below.
         fs::write(temp.path().join(".cursorrules"), old_content).unwrap();
 
         // Run the update
-        let updated = update_template_files(temp.path()).unwrap();
-        assert!(updated);
+        let result = update_template_files(temp.path()).unwrap();
+        assert!(result.updated_count > 0);
 
         // Verify .cursorrules was updated
         let new_content = fs::read_to_string(temp.path().join(".cursorrules")).unwrap();

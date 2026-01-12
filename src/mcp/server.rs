@@ -180,6 +180,10 @@ impl McpServer {
                             "type": "string",
                             "description": "DEPRECATED - use batch instead"
                         },
+                        "repo_path": {
+                            "type": "string",
+                            "description": "Optional: Target repository path. If specified, validates that this matches the current repository before logging. Use this to prevent accidentally logging to the wrong repo when working across multiple repositories."
+                        },
                         "batch": {
                             "type": "array",
                             "description": "REQUIRED. Array of {role, category, content, locations?} entries.",
