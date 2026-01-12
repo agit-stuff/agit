@@ -4,7 +4,7 @@
 
 # agit - AI-Native Git Wrapper
 
-**[Documentation](https://agit-stuff.github.io/) · [GitHub](https://github.com/agit-stuff/agit)**
+**[Documentation](https://agit-ccm.com) · [GitHub](https://github.com/agit-stuff/agit)**
 
 agit captures the **reasoning context** (Why/How) alongside your **code changes** (What). It creates a "Neural Graph" parallel to Git's commit graph, giving you and your team a complete history of not just what changed, but *why* it changed and *how* the decision was made.
 
@@ -44,6 +44,16 @@ curl -fsSL https://raw.githubusercontent.com/agit-stuff/agit/main/install.sh | b
 cargo install agit
 ```
 
+## Seamless Git Integration
+
+agit is designed as a **transparent wrapper** around Git, following the principle of least surprise. You can continue using standard Git commands (`git add`, `git commit`, `git push`) exactly as before—agit hooks into Git's event system to capture context automatically.
+
+- **Non-intrusive integration** - agit doesn't replace Git; it extends it
+- **Zero workflow disruption** - Your existing CI/CD pipelines, Git aliases, and muscle memory remain intact
+- **Graceful degradation** - If agit is unavailable, Git operations proceed normally
+
+When you run `git commit`, agit's post-commit hook automatically creates a corresponding neural commit, linking your reasoning to the code changes. You can also use `agit commit` for explicit control over both operations.
+
 ## Quick Start
 
 ```bash
@@ -51,13 +61,19 @@ cargo install agit
 cd your-project
 agit init
 
-# Your AI assistant will now automatically log thoughts via MCP
-# Or manually record thoughts:
-agit record "Planning to refactor the auth module"
+# Restart your AI editor (Cursor, Claude Code, Windsurf) to activate MCP
 
-# After making changes, stage and commit with context:
+# Your AI assistant now automatically logs thoughts via MCP
+# No manual steps needed - just code as usual!
+
+# When ready, commit normally:
+git add .
+git commit -m "Refactor auth module"  # agit hooks capture context automatically
+
+# Or use agit commands for explicit control:
+agit record "Planning to refactor the auth module"
 agit add .
-agit commit -m "Refactor auth module"  # Creates both git + neural commit
+agit commit -m "Refactor auth module"
 
 # View history with context:
 agit log
