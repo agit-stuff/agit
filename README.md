@@ -178,6 +178,11 @@ This creates a "dual graph" where:
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
 
+### Contributors
+
+- **Burak Arslan** ([@arslan38](https://github.com/arslan38)) - Creator & Maintainer
+- **Hikmet Gultekin** ([@hikmedit](https://github.com/hikmedit)) - Creator & Maintainer
+
 ## License
 
 Licensed under either of:
