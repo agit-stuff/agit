@@ -139,7 +139,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `agit commit` - Create a neural commit with linked context
   - `agit log` - View commit history with summaries
   - `agit show` - Show full context for a commit
-  - `agit server` - Start the MCP server
+  - `agit serve` - Start the MCP server for AI editors
 - MCP (Model Context Protocol) server:
   - `agit_log_step` - Log conversation steps from AI editors
   - `agit_read_roadmap` - Read project roadmap

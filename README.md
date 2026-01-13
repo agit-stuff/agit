@@ -122,7 +122,7 @@ your-project/
 | `agit log` | View commit history with summaries |
 | `agit show [hash]` | Show full context for a commit |
 | `agit search <query>` | Search past reasoning |
-| `agit server` | Start the MCP server |
+| `agit serve` | Start the MCP server for AI editors |
 
 ## Philosophy
 
