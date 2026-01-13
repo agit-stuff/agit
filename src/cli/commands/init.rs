@@ -35,20 +35,25 @@ pub fn execute(args: InitArgs) -> Result<()> {
         return Err(AgitError::NotGitRepository);
     }
 
-    // Handle --update mode: only update template files, don't reinitialize
+    // Handle --update mode: update template files and MCP configs
     if args.update {
         if !agit_dir.exists() {
             println!("⚠️  AGIT is not initialized. Run `agit init` first.");
             return Ok(());
         }
 
+        // Update template files (CLAUDE.md, .cursorrules, etc.)
         let result = update_template_files(&cwd)?;
-        if result.updated_count > 0 {
-            println!("\nRestart your AI assistant to apply the updated AGIT memory protocol.");
+
+        // Update MCP configs (server -> serve)
+        let mcp_updated = update_mcp_configs(&cwd)?;
+
+        if result.updated_count > 0 || mcp_updated > 0 {
+            println!("\nRestart your AI assistant to apply the updates.");
         } else if result.up_to_date_count > 0 {
             println!("Already up to date.");
         } else {
-            println!("No template files were updated. Ensure CLAUDE.md or .cursorrules exists.");
+            println!("No files were updated.");
         }
         return Ok(());
     }
@@ -284,7 +289,7 @@ fn generate_mcp_config(agit_path: &str) -> String {
   "mcpServers": {{
     "agit": {{
       "command": "{}",
-      "args": ["server"]
+      "args": ["serve"]
     }}
   }}
 }}
@@ -303,7 +308,7 @@ fn generate_vscode_mcp_config(agit_path: &str) -> String {
   "servers": {{
     "agit": {{
       "command": "{}",
-      "args": ["server"]
+      "args": ["serve"]
     }}
   }}
 }}
@@ -350,6 +355,33 @@ fn generate_mcp_configs(project_dir: &Path) -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Update existing MCP configuration files to use the new "serve" command.
+/// Returns the number of files updated.
+fn update_mcp_configs(project_dir: &Path) -> Result<usize> {
+    let mcp_paths = [
+        project_dir.join(".mcp.json"),
+        project_dir.join(".cursor/mcp.json"),
+        project_dir.join(".vscode/mcp.json"),
+    ];
+
+    let mut updated_count = 0;
+
+    for path in &mcp_paths {
+        if path.exists() {
+            let content = fs::read_to_string(path)?;
+            // Check if it has the old "server" command
+            if content.contains(r#""args": ["server"]"#) {
+                let new_content = content.replace(r#""args": ["server"]"#, r#""args": ["serve"]"#);
+                fs::write(path, new_content)?;
+                updated_count += 1;
+                println!("  - Updated {}", path.display());
+            }
+        }
+    }
+
+    Ok(updated_count)
 }
 
 /// Update .gitignore with AGIT entries.
@@ -474,7 +506,7 @@ mod tests {
         let mcp_content = fs::read_to_string(temp.path().join(".mcp.json")).unwrap();
         assert!(mcp_content.contains("mcpServers"));
         assert!(mcp_content.contains("agit"));
-        assert!(mcp_content.contains("server"));
+        assert!(mcp_content.contains("serve"));
 
         // Verify VS Code uses "servers" key (not "mcpServers")
         let vscode_content = fs::read_to_string(temp.path().join(".vscode/mcp.json")).unwrap();
