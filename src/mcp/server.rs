@@ -382,13 +382,13 @@ impl McpServer {
             uri if uri == resources::recent_history::URI => {
                 resources::recent_history::read(&self.project_root, &self.agit_dir)
                     .map_err(|e| (INTERNAL_ERROR, e))?
-            }
+            },
             _ => {
                 return Err((
                     INVALID_PARAMS,
                     format!("Unknown resource URI: {}", read_params.uri),
                 ));
-            }
+            },
         };
 
         let result = ResourceReadResult {

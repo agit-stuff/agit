@@ -247,7 +247,8 @@ fn update_template_files(project_dir: &Path) -> Result<UpdateResult> {
         if let Some(version_start) = protocol_block.find("version=\"") {
             let version_str_start = version_start + 9; // len of 'version="'
             if let Some(version_end) = protocol_block[version_str_start..].find('"') {
-                let existing_version = &protocol_block[version_str_start..version_str_start + version_end];
+                let existing_version =
+                    &protocol_block[version_str_start..version_str_start + version_end];
                 if existing_version == AGIT_VERSION {
                     result.up_to_date_count += 1;
                     continue;
@@ -588,7 +589,10 @@ Additional custom content below.
 
         // Run the update
         let result = update_template_files(temp.path()).unwrap();
-        assert!(result.updated_count > 0, "Should have updated at least one file");
+        assert!(
+            result.updated_count > 0,
+            "Should have updated at least one file"
+        );
 
         // Verify the result
         let new_content = fs::read_to_string(temp.path().join("CLAUDE.md")).unwrap();
@@ -649,8 +653,14 @@ Additional custom content below.
 
         // Run the update - should not update anything
         let result = update_template_files(temp.path()).unwrap();
-        assert_eq!(result.updated_count, 0, "Should not update when no protocol block found");
-        assert_eq!(result.up_to_date_count, 0, "Should not be up-to-date when no protocol block found");
+        assert_eq!(
+            result.updated_count, 0,
+            "Should not update when no protocol block found"
+        );
+        assert_eq!(
+            result.up_to_date_count, 0,
+            "Should not be up-to-date when no protocol block found"
+        );
 
         // Content should remain unchanged
         let after_content = fs::read_to_string(temp.path().join("CLAUDE.md")).unwrap();
@@ -663,8 +673,14 @@ Additional custom content below.
 
         // No template files exist
         let result = update_template_files(temp.path()).unwrap();
-        assert_eq!(result.updated_count, 0, "Should not update when no template files exist");
-        assert_eq!(result.up_to_date_count, 0, "Should not be up-to-date when no template files exist");
+        assert_eq!(
+            result.updated_count, 0,
+            "Should not update when no template files exist"
+        );
+        assert_eq!(
+            result.up_to_date_count, 0,
+            "Should not be up-to-date when no template files exist"
+        );
     }
 
     #[test]
@@ -691,7 +707,10 @@ Additional custom content below.
 
         // Run the update - should detect as already up-to-date
         let result = update_template_files(temp.path()).unwrap();
-        assert_eq!(result.updated_count, 0, "Should not update when already current version");
+        assert_eq!(
+            result.updated_count, 0,
+            "Should not update when already current version"
+        );
         assert_eq!(result.up_to_date_count, 1, "Should count as up-to-date");
 
         // Content should remain unchanged

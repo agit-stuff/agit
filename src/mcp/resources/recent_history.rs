@@ -50,7 +50,7 @@ pub fn read(project_root: &Path, agit_dir: &Path) -> Result<ResourceContent, Str
                 Recent summaries will appear here after you make commits with AGIT.\n\
                 Use 'agit commit' to create commits that capture your reasoning.";
             Ok(ResourceContent::text(URI, content, Some(MIME_TYPE)))
-        }
+        },
     }
 }
 
