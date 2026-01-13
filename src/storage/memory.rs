@@ -238,7 +238,10 @@ impl FileMemoryStore {
             )));
         }
         let (prefix, rest) = hash.split_at(2);
-        Ok(self.memories_dir.join(prefix).join(format!("{}.json", rest)))
+        Ok(self
+            .memories_dir
+            .join(prefix)
+            .join(format!("{}.json", rest)))
     }
 
     /// Ensure the parent directory exists for a given path.
@@ -289,10 +292,7 @@ impl FileMemoryStore {
                 }
 
                 // Must be a .json file
-                let file_name = file_path
-                    .file_name()
-                    .and_then(|n| n.to_str())
-                    .unwrap_or("");
+                let file_name = file_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
                 if !file_name.ends_with(".json") {
                     continue;
@@ -383,7 +383,7 @@ impl MemoryStore for FileMemoryStore {
                 Err(e) => {
                     // Log warning but continue - don't fail on corrupt files
                     tracing::warn!("Skipping corrupt memory file {}: {}", hash, e);
-                }
+                },
             }
         }
 
@@ -477,7 +477,7 @@ impl MemoryMigration {
             content
                 .lines()
                 .filter(|line| !line.trim().is_empty())
-                .map(|line| serde_json::from_str(line))
+                .map(serde_json::from_str)
                 .collect::<std::result::Result<Vec<_>, _>>()?
         };
 
@@ -581,12 +581,7 @@ mod tests {
 
     #[test]
     fn test_memory_node_creation() {
-        let memory = MemoryNode::new(
-            "abc123",
-            Role::User,
-            Category::Intent,
-            "Fix the auth bug",
-        );
+        let memory = MemoryNode::new("abc123", Role::User, Category::Intent, "Fix the auth bug");
 
         assert_eq!(memory.commit_hash, "abc123");
         assert_eq!(memory.role, Role::User);
@@ -615,12 +610,7 @@ mod tests {
 
     #[test]
     fn test_memory_node_serialization() {
-        let memory = MemoryNode::new(
-            "abc123",
-            Role::User,
-            Category::Intent,
-            "Test content",
-        );
+        let memory = MemoryNode::new("abc123", Role::User, Category::Intent, "Test content");
 
         let json = serde_json::to_string(&memory).unwrap();
         assert!(json.contains("\"commit_hash\":\"abc123\""));
@@ -630,12 +620,7 @@ mod tests {
 
     #[test]
     fn test_memory_node_hash() {
-        let memory = MemoryNode::new(
-            "abc123",
-            Role::User,
-            Category::Intent,
-            "Test content",
-        );
+        let memory = MemoryNode::new("abc123", Role::User, Category::Intent, "Test content");
 
         let hash = memory.compute_hash().unwrap();
         assert_eq!(hash.len(), 64); // SHA-256 = 64 hex chars
@@ -645,12 +630,7 @@ mod tests {
     fn test_save_and_load_memory() {
         let (_temp, store) = setup();
 
-        let memory = MemoryNode::new(
-            "commit123",
-            Role::User,
-            Category::Intent,
-            "Fix the bug",
-        );
+        let memory = MemoryNode::new("commit123", Role::User, Category::Intent, "Fix the bug");
 
         let hash = store.save_memory(&memory).unwrap();
         assert!(store.exists(&hash).unwrap());
@@ -664,12 +644,7 @@ mod tests {
     fn test_save_is_idempotent() {
         let (_temp, store) = setup();
 
-        let memory = MemoryNode::new(
-            "commit123",
-            Role::User,
-            Category::Intent,
-            "Same content",
-        );
+        let memory = MemoryNode::new("commit123", Role::User, Category::Intent, "Same content");
 
         let hash1 = store.save_memory(&memory).unwrap();
         let hash2 = store.save_memory(&memory).unwrap();
@@ -858,12 +833,17 @@ mod tests {
             IndexEntry::ai_reasoning("Added try/catch"),
         ];
 
-        let hashes = migration.migrate_index_entries(&entries, "commit123").unwrap();
+        let hashes = migration
+            .migrate_index_entries(&entries, "commit123")
+            .unwrap();
 
         assert_eq!(hashes.len(), 2);
 
         // Verify memories are stored with commit_hash
-        let memories = migration.memory_store.get_memories_by_commit("commit123").unwrap();
+        let memories = migration
+            .memory_store
+            .get_memories_by_commit("commit123")
+            .unwrap();
         assert_eq!(memories.len(), 2);
     }
 }
