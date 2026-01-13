@@ -1,14 +1,14 @@
-//! Implementation of the `agit server` command.
+//! Implementation of the `agit serve` command.
 //!
 //! This starts the MCP (Model Context Protocol) server that AI assistants
 //! can connect to for logging thoughts and reading context.
 
-use crate::cli::args::ServerArgs;
+use crate::cli::args::ServeArgs;
 use crate::error::{AgitError, Result};
 use crate::mcp::McpServer;
 
-/// Execute the `server` command.
-pub fn execute(args: ServerArgs) -> Result<()> {
+/// Execute the `serve` command.
+pub fn execute(args: ServeArgs) -> Result<()> {
     let cwd = std::env::current_dir()?;
     let agit_dir = cwd.join(".agit");
 

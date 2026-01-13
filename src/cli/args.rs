@@ -49,8 +49,8 @@ pub enum Commands {
     /// Migrate storage from V1 (file-based) to V2 (Git-native)
     Migrate(MigrateArgs),
 
-    /// Start the MCP server
-    Server(ServerArgs),
+    /// Start the MCP server for AI editors
+    Serve(ServeArgs),
 
     /// Search-related commands (rebuild index, query)
     Search(SearchArgs),
@@ -185,9 +185,9 @@ pub struct CommitArgs {
     pub journal: bool,
 }
 
-/// Arguments for the `server` command
+/// Arguments for the `serve` command
 #[derive(Parser, Debug)]
-pub struct ServerArgs {
+pub struct ServeArgs {
     /// Port to listen on (for HTTP mode, not implemented yet)
     #[arg(short, long)]
     pub port: Option<u16>,
