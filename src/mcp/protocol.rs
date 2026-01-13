@@ -116,6 +116,8 @@ pub struct InitializeResult {
 #[derive(Debug, Serialize)]
 pub struct ServerCapabilities {
     pub tools: ToolsCapability,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub resources: Option<ResourcesCapability>,
 }
 
 /// Tools capability.
@@ -191,6 +193,85 @@ impl ToolCallResult {
             is_error: Some(true),
         }
     }
+}
+
+// ============================================================
+// RESOURCE TYPES
+// ============================================================
+
+/// Resources capability for server capabilities.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ResourcesCapability {
+    /// Whether the server emits list_changed notifications.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub list_changed: Option<bool>,
+    /// Whether the server supports subscriptions.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub subscribe: Option<bool>,
+}
+
+/// Resource definition exposed by the server.
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ResourceDefinition {
+    /// Unique URI identifying this resource (e.g., "agit://history/recent")
+    pub uri: String,
+    /// Human-readable name of the resource
+    pub name: String,
+    /// Optional description of what this resource provides
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    /// Optional MIME type of the resource content
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mime_type: Option<String>,
+}
+
+/// Response for resources/list request.
+#[derive(Debug, Serialize)]
+pub struct ResourcesListResult {
+    pub resources: Vec<ResourceDefinition>,
+}
+
+/// Parameters for resources/read request.
+#[derive(Debug, Deserialize)]
+pub struct ResourceReadParams {
+    pub uri: String,
+}
+
+/// Content item returned from resources/read.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ResourceContent {
+    /// URI of the resource
+    pub uri: String,
+    /// MIME type of the content
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mime_type: Option<String>,
+    /// Text content (for text resources)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub text: Option<String>,
+    /// Base64-encoded binary content (for binary resources)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub blob: Option<String>,
+}
+
+impl ResourceContent {
+    /// Create a text resource content.
+    pub fn text(uri: &str, content: &str, mime_type: Option<&str>) -> Self {
+        Self {
+            uri: uri.to_string(),
+            mime_type: mime_type.map(|s| s.to_string()),
+            text: Some(content.to_string()),
+            blob: None,
+        }
+    }
+}
+
+/// Response for resources/read request.
+#[derive(Debug, Serialize)]
+pub struct ResourceReadResult {
+    pub contents: Vec<ResourceContent>,
 }
 
 // Tool-specific parameter types
