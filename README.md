@@ -178,10 +178,30 @@ This creates a "dual graph" where:
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
 
-### Contributors
+### Support the Project
 
-- **Burak Arslan** ([@arslan38](https://github.com/arslan38)) - Creator & Maintainer
-- **Hikmet Gultekin** ([@hikmedit](https://github.com/hikmedit)) - Creator & Maintainer
+Agit is an open-source project. If you find it useful, please consider supporting its development to help us maintain the infrastructure and build new features.
+
+<a href="https://www.patreon.com/cw/agitccm">
+  Support on Patreon
+</a
+  
+---
+
+<p align="center">
+  <strong>Backed by</strong>
+</p>
+
+<p align="center">
+  <a href="https://pcdcooperation.com">
+    <img src="https://pcdcooperation.com/assets/images/logo_icon_dark.svg" alt="PCD Cooperation" height="60">
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://pcdcooperation.com">pcdcooperation.com</a>
+</p>
+
 
 ## License
 
