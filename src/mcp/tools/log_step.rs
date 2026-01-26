@@ -224,7 +224,11 @@ fn execute_batch(agit_dir: &Path, entries: Vec<LogEntry>) -> ToolCallResult {
             rejection_parts.push(format!(
                 "⛔ {} {} rejected (all locations outside repository scope)",
                 rejected_entries,
-                if rejected_entries == 1 { "entry" } else { "entries" }
+                if rejected_entries == 1 {
+                    "entry"
+                } else {
+                    "entries"
+                }
             ));
         }
 

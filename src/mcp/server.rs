@@ -11,6 +11,7 @@ use tracing::{debug, error, info};
 
 use crate::error::Result;
 use crate::mcp::protocol::*;
+use crate::mcp::resources;
 use crate::mcp::tools;
 
 /// MCP Server that handles JSON-RPC requests over stdio.
@@ -123,6 +124,10 @@ impl McpServer {
             "tools/list" => self.handle_tools_list(),
             "tools/call" => self.handle_tools_call(request.params.as_ref()),
 
+            // MCP resource methods
+            "resources/list" => self.handle_resources_list(),
+            "resources/read" => self.handle_resources_read(request.params.as_ref()),
+
             // Unknown method
             _ => {
                 error!("Unknown method: {}", request.method);
@@ -147,6 +152,10 @@ impl McpServer {
                 tools: ToolsCapability {
                     list_changed: false,
                 },
+                resources: Some(ResourcesCapability {
+                    list_changed: Some(false),
+                    subscribe: Some(false),
+                }),
             },
             server_info: ServerInfo {
                 name: "agit".to_string(),
@@ -343,6 +352,48 @@ impl McpServer {
             _ => ToolCallResult::error(&format!("Unknown tool: {}", call_params.name)),
         };
 
+        serde_json::to_value(result).map_err(|e| (INTERNAL_ERROR, e.to_string()))
+    }
+
+    /// Handle the resources/list request.
+    fn handle_resources_list(&self) -> std::result::Result<Value, (i32, String)> {
+        let resources = vec![ResourceDefinition {
+            uri: resources::recent_history::URI.to_string(),
+            name: resources::recent_history::NAME.to_string(),
+            description: Some(resources::recent_history::DESCRIPTION.to_string()),
+            mime_type: Some(resources::recent_history::MIME_TYPE.to_string()),
+        }];
+
+        let result = ResourcesListResult { resources };
+        serde_json::to_value(result).map_err(|e| (INTERNAL_ERROR, e.to_string()))
+    }
+
+    /// Handle the resources/read request.
+    fn handle_resources_read(
+        &self,
+        params: Option<&Value>,
+    ) -> std::result::Result<Value, (i32, String)> {
+        let params = params.ok_or((INVALID_PARAMS, "Missing params".to_string()))?;
+
+        let read_params: ResourceReadParams = serde_json::from_value(params.clone())
+            .map_err(|e| (INVALID_PARAMS, format!("Invalid params: {}", e)))?;
+
+        let content = match read_params.uri.as_str() {
+            uri if uri == resources::recent_history::URI => {
+                resources::recent_history::read(&self.project_root, &self.agit_dir)
+                    .map_err(|e| (INTERNAL_ERROR, e))?
+            },
+            _ => {
+                return Err((
+                    INVALID_PARAMS,
+                    format!("Unknown resource URI: {}", read_params.uri),
+                ));
+            },
+        };
+
+        let result = ResourceReadResult {
+            contents: vec![content],
+        };
         serde_json::to_value(result).map_err(|e| (INTERNAL_ERROR, e.to_string()))
     }
 }

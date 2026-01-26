@@ -49,7 +49,7 @@ fn setup_mcp_test() -> (TempDir, std::process::Child) {
 
     // Start the MCP server
     let child = Command::new(env!("CARGO_BIN_EXE_agit"))
-        .arg("server")
+        .arg("serve")
         .current_dir(temp.path())
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())

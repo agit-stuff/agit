@@ -11,7 +11,7 @@ pub mod push;
 pub mod record;
 pub mod reset;
 pub mod search;
-pub mod server;
+pub mod serve;
 pub mod show;
 pub mod status;
 pub mod sync;
