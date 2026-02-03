@@ -17,7 +17,7 @@ authors = ["AGIT Contributors"]
 clap = { version = "4", features = ["derive", "env", "wrap_help"] }
 
 # Git (vendored for cross-compilation support)
-git2 = { version = "0.19", features = ["vendored-libgit2", "vendored-openssl"] }
+git2 = { version = "0.20", features = ["vendored-libgit2", "vendored-openssl"] }
 
 # Serialization
 serde = { version = "1", features = ["derive"] }
